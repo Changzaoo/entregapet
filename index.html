@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>PetNexus Entregador — Transmissão ao vivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="petnexus-config.js"></script>
+<script src="petnexus-rt.js"></script>
+<!-- Autenticação Firebase → Supabase -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="petnexus-firebase.js"></script>
+<script>window.PETNEXUS_APP_ROLE='entregador';</script>
+<script src="petnexus-auth.js"></script>
+<style>
+:root{
+  color-scheme:light;
+  --accent:#0FA3B1;--accent-2:#0B7E8A;--coral:#FF7A45;--coral-2:#F0591F;
+  --grad:linear-gradient(135deg,#16C0CC,#0E7C86);--grad-coral:linear-gradient(135deg,#FF9D6B,#F0591F);
+  --verde:#16A66B;
+  --page:#E9EBEE;--bg:#F5F5F7;--surface:#FFFFFF;--surface-2:#F2F3F5;
+  --text:#1A1A1C;--muted:#6E7378;--faint:#9A9FA6;
+  --border:rgba(0,0,0,.08);--hair:rgba(0,0,0,.05);
+  --shadow:0 12px 40px -12px rgba(20,40,50,.18),0 2px 8px -2px rgba(20,40,50,.06);
+  --shadow-sm:0 4px 16px -6px rgba(20,40,50,.12);
+  --spring:cubic-bezier(.2,.8,.2,1);
+}
+[data-theme="dark"]{
+  color-scheme:dark;
+  --accent:#2DD4DF;--accent-2:#5EE7F0;--coral:#FF8A57;--coral-2:#FF7038;
+  --verde:#2BD18A;
+  --page:#000;--bg:#0A0A0C;--surface:#1C1C1E;--surface-2:#2C2C2E;
+  --text:#F5F5F7;--muted:#A1A1A6;--faint:#6E7077;
+  --border:rgba(255,255,255,.12);--hair:rgba(255,255,255,.07);
+  --shadow:0 24px 60px -20px rgba(0,0,0,.7);--shadow-sm:0 10px 30px -14px rgba(0,0,0,.55);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',-apple-system,system-ui,sans-serif;background:var(--page);color:var(--text);min-height:100vh;
+  display:flex;justify-content:center;-webkit-font-smoothing:antialiased;transition:background .4s}
+.app{width:100%;max-width:460px;background:var(--bg);min-height:100vh;display:flex;flex-direction:column;transition:background .4s}
+@media(min-width:480px){.app{margin:20px 0;min-height:calc(100vh - 40px);border-radius:34px;overflow:hidden;box-shadow:0 50px 100px -30px rgba(0,0,0,.5)}body{align-items:flex-start}}
+h1,h2,h3{letter-spacing:-.02em;font-weight:700}
+.msi{font-family:'Material Symbols Rounded';font-weight:normal;line-height:1;vertical-align:middle;display:inline-block;
+  font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24}
+.bar{background:var(--grad);color:#fff;padding:20px 18px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.bar .t{display:flex;align-items:center;gap:11px}
+.bar .mk{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:20px;backdrop-filter:blur(6px)}
+.bar h1{font-size:1.18rem;color:#fff}.bar small{font-size:.74rem;opacity:.9;font-weight:600}
+.tg{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.18);border:none;color:#fff;font-size:17px;cursor:pointer;backdrop-filter:blur(6px)}
+.body{flex:1;padding:16px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+.card{background:var(--surface);border:1px solid var(--hair);border-radius:20px;padding:16px;box-shadow:var(--shadow-sm)}
+.conn{display:flex;align-items:center;gap:9px;font-size:.82rem;font-weight:600;color:var(--muted)}
+.conn .dot{width:9px;height:9px;border-radius:50%;background:var(--faint);flex:none}
+.conn.ok .dot{background:var(--verde);box-shadow:0 0 0 0 rgba(34,197,94,.5);animation:pp 1.6s infinite}
+.conn.err .dot{background:var(--coral-2)}
+@keyframes pp{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}100%{box-shadow:0 0 0 7px rgba(34,197,94,0)}}
+.fld label{display:block;font-size:.74rem;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
+.fld input{width:100%;padding:13px 14px;border:1.5px solid var(--border);border-radius:13px;font-size:1rem;font-family:inherit;background:var(--surface-2);color:var(--text);font-weight:600}
+.fld input:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+.seg{display:flex;gap:6px;background:var(--surface-2);border-radius:14px;padding:5px;margin-top:12px}
+.seg button{flex:1;border:none;background:transparent;color:var(--muted);font-family:inherit;font-weight:700;font-size:.86rem;padding:10px;border-radius:10px;cursor:pointer;transition:.2s var(--spring);display:flex;align-items:center;justify-content:center;gap:6px}
+.seg button.on{background:var(--surface);color:var(--accent-2);box-shadow:var(--shadow-sm)}
+#map{height:clamp(240px,40vh,360px);width:100%;border-radius:18px;overflow:hidden;border:1px solid var(--hair);box-shadow:var(--shadow-sm);z-index:1;background:var(--surface-2)}
+.leaflet-top,.leaflet-bottom{z-index:2}.leaflet-container{font-family:inherit}
+.van-marker{background:var(--grad-coral);width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;
+  box-shadow:0 8px 20px -4px rgba(240,89,31,.65);border:3px solid #fff}
+.van-marker .msi{font-size:20px}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.metric{background:var(--surface-2);border-radius:14px;padding:12px;text-align:center}
+.metric b{display:block;font-size:1.15rem;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.metric span{font-size:.68rem;color:var(--muted);font-weight:600}
+.go{width:100%;border:none;border-radius:16px;padding:17px;font-family:inherit;font-weight:800;font-size:1.04rem;color:#fff;
+  background:var(--grad-coral);cursor:pointer;box-shadow:0 14px 30px -12px rgba(240,89,31,.55);display:flex;align-items:center;justify-content:center;gap:9px;transition:transform .2s var(--spring)}
+.go:active{transform:scale(.97)}
+.go.stop{background:linear-gradient(135deg,#E5484D,#C2363B);box-shadow:0 14px 30px -12px rgba(229,72,77,.55)}
+.go:disabled{opacity:.5;cursor:not-allowed}
+.hint{font-size:.76rem;color:var(--muted);text-align:center;line-height:1.5}
+.hint b{color:var(--text)}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:800;letter-spacing:.05em;padding:5px 11px;border-radius:50px;
+  background:color-mix(in srgb,var(--verde) 16%,transparent);color:var(--verde)}
+.live .dot{width:7px;height:7px;border-radius:50%;background:var(--verde);animation:pp 1.4s infinite}
+.log{font-size:.72rem;color:var(--faint);font-variant-numeric:tabular-nums;max-height:96px;overflow:auto;line-height:1.6}
+
+/* ===== TELA DE AUTH ENTREGADOR ===== */
+#entAuthWrap{
+  position:fixed;inset:0;z-index:9999;
+  display:none;align-items:flex-start;justify-content:center;
+  background:var(--page);overflow-y:auto;
+}
+.ent-auth-inner{
+  width:100%;max-width:460px;min-height:100vh;
+  display:flex;flex-direction:column;
+}
+@media(min-width:480px){
+  #entAuthWrap{align-items:center;padding:20px 0;}
+  .ent-auth-inner{min-height:auto;border-radius:34px;overflow:hidden;
+    box-shadow:0 50px 100px -30px rgba(0,0,0,.5);}
+}
+.ent-auth-head{
+  background:var(--grad);padding:48px 24px 32px;text-align:center;position:relative;overflow:hidden;
+}
+.ent-auth-head::before{
+  content:"";position:absolute;top:-50px;left:50%;transform:translateX(-50%);
+  width:240px;height:240px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.16),transparent 70%);pointer-events:none;
+}
+.ent-auth-head .mk{
+  width:64px;height:64px;border-radius:20px;
+  background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.26);
+  display:inline-flex;align-items:center;justify-content:center;
+  margin-bottom:14px;backdrop-filter:blur(10px);position:relative;z-index:1;
+}
+.ent-auth-head .mk .msi{font-size:32px;color:#fff}
+.ent-auth-head h1{font-size:1.5rem;font-weight:800;color:#fff;position:relative;z-index:1}
+.ent-auth-head p{font-size:.8rem;color:rgba(255,255,255,.8);margin-top:5px;position:relative;z-index:1;font-weight:500}
+.ent-auth-tabs{display:flex;background:var(--surface-2);border-radius:14px;padding:4px;gap:4px}
+.ent-auth-tab{
+  flex:1;border:none;background:transparent;color:var(--muted);
+  font-family:inherit;font-weight:700;font-size:.86rem;padding:10px;
+  border-radius:10px;cursor:pointer;transition:.2s var(--spring);
+}
+.ent-auth-tab.on{background:var(--surface);color:var(--accent-2);box-shadow:var(--shadow-sm)}
+.ent-auth-body{padding:22px 18px 32px;display:flex;flex-direction:column;gap:13px;background:var(--bg);flex:1}
+.ent-form{display:flex;flex-direction:column;gap:12px}
+.ent-form.hidden{display:none}
+.ent-form .fld label{font-size:.73rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.ent-auth-err{
+  background:color-mix(in srgb,#E5484D 10%,transparent);
+  border:1px solid color-mix(in srgb,#E5484D 28%,transparent);
+  border-radius:11px;padding:10px 13px;font-size:.81rem;font-weight:600;
+  color:#C2363B;display:none;
+}
+[data-theme="dark"] .ent-auth-err{color:#FF6B6E}
+.ent-auth-err.show{display:block}
+.ent-btn-main{
+  width:100%;border:none;border-radius:15px;padding:16px;
+  background:var(--grad-coral);color:#fff;font-family:inherit;
+  font-weight:800;font-size:1rem;cursor:pointer;
+  box-shadow:0 12px 28px -10px rgba(240,89,31,.5);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:transform .18s;
+}
+.ent-btn-main:active{transform:scale(.97)}
+.ent-btn-main:disabled{opacity:.5;cursor:not-allowed}
+.ent-sep{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:.76rem;font-weight:600}
+.ent-sep::before,.ent-sep::after{content:"";flex:1;height:1px;background:var(--border)}
+.ent-btn-google{
+  width:100%;padding:12px 15px;border:1.5px solid var(--border);border-radius:13px;
+  background:var(--surface);color:var(--text);font-family:inherit;
+  font-weight:700;font-size:.88rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:border-color .18s;
+}
+.ent-btn-google:hover{border-color:var(--accent)}
+.ent-btn-google svg{width:18px;height:18px;flex:none}
+.ent-reset{font-size:.8rem;color:var(--accent);font-weight:600;cursor:pointer;background:none;border:none;font-family:inherit;text-align:center;padding:3px}
+</style>
+</head>
+<body>
+
+<!-- ===== TELA DE AUTH ENTREGADOR ===== -->
+<div id="entAuthWrap" style="display:flex">
+  <div class="ent-auth-inner">
+    <div class="ent-auth-head">
+      <div class="mk"><span class="msi">local_shipping</span></div>
+      <h1>PetNexus Entregador</h1>
+      <p>Faça login para iniciar as entregas</p>
+    </div>
+    <div class="ent-auth-body">
+      <div class="ent-auth-tabs" role="tablist">
+        <button class="ent-auth-tab on" id="entTabEntrar" role="tab" onclick="entAuthTab('entrar')">Entrar</button>
+        <button class="ent-auth-tab" id="entTabCadastro" role="tab" onclick="entAuthTab('cadastro')">Criar conta</button>
+      </div>
+
+      <!-- FORM: ENTRAR -->
+      <div class="ent-form" id="entFormEntrar">
+        <div id="entAuthErr" class="ent-auth-err"></div>
+        <div class="fld">
+          <label for="entEmail">E-mail</label>
+          <input id="entEmail" type="email" inputmode="email" autocomplete="email" placeholder="seu@email.com">
+        </div>
+        <div class="fld">
+          <label for="entSenha">Senha</label>
+          <input id="entSenha" type="password" autocomplete="current-password" placeholder="••••••••">
+        </div>
+        <button class="ent-btn-main" id="entBtnEntrar" onclick="entDoLogin()">
+          <span class="msi">login</span> Entrar
+        </button>
+        <button class="ent-reset" onclick="entDoReset()">Esqueci minha senha</button>
+        <div class="ent-sep">ou</div>
+        <button class="ent-btn-google" id="entBtnGoogle" onclick="entDoGoogle()">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Continuar com Google
+        </button>
+      </div>
+
+      <!-- FORM: CADASTRO -->
+      <div class="ent-form hidden" id="entFormCadastro">
+        <div id="entAuthErrC" class="ent-auth-err"></div>
+        <div class="fld">
+          <label for="entCadNome">Nome completo</label>
+          <input id="entCadNome" type="text" autocomplete="name" placeholder="Carlos Mendes">
+        </div>
+        <div class="fld">
+          <label for="entCadEmail">E-mail</label>
+          <input id="entCadEmail" type="email" inputmode="email" autocomplete="email" placeholder="seu@email.com">
+        </div>
+        <div class="fld">
+          <label for="entCadSenha">Senha</label>
+          <input id="entCadSenha" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+        </div>
+        <div class="fld">
+          <label for="entCadSenha2">Confirmar senha</label>
+          <input id="entCadSenha2" type="password" autocomplete="new-password" placeholder="Repita a senha">
+        </div>
+        <button class="ent-btn-main" id="entBtnCadastrar" onclick="entDoCadastro()">
+          <span class="msi">person_add</span> Criar conta de entregador
+        </button>
+        <div class="ent-sep">ou</div>
+        <button class="ent-btn-google" id="entBtnGoogleC" onclick="entDoGoogle()">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Continuar com Google
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ===== /TELA DE AUTH ENTREGADOR ===== -->
+
+<div class="app">
+  <div class="bar">
+    <div class="t"><span class="mk"><span class="msi">local_shipping</span></span><div><h1>PetNexus Entregador</h1><small>Transmissão de localização ao vivo</small></div></div>
+    <button class="tg" id="theme" aria-label="Alternar tema"><span class="msi">dark_mode</span></button>
+  </div>
+  <div class="body">
+    <div class="card">
+      <div class="conn" id="conn"><span class="dot"></span><span id="connTxt">Verificando conexão…</span></div>
+    </div>
+
+    <div class="card">
+      <div class="fld">
+        <label for="code">Código da entrega</label>
+        <input id="code" value="demo" autocomplete="off" inputmode="text" aria-label="Código da entrega">
+      </div>
+      <div class="seg" role="group" aria-label="Fonte da localização">
+        <button id="mGps" class="on" onclick="setMode('gps')"><span class="msi">my_location</span> Meu GPS</button>
+        <button id="mSim" onclick="setMode('sim')"><span class="msi">route</span> Simular trajeto</button>
+      </div>
+      <p class="hint" id="modeHint" style="margin-top:10px">Usa o GPS real do aparelho. Ideal no celular do entregador.</p>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <b style="font-size:.9rem" id="status">Parado</b>
+        <span class="live" id="liveTag" style="display:none"><span class="dot"></span> TRANSMITINDO</span>
+      </div>
+      <div class="metrics">
+        <div class="metric"><b id="mSpeed">—</b><span>km/h</span></div>
+        <div class="metric"><b id="mAcc">—</b><span>precisão (m)</span></div>
+        <div class="metric"><b id="mSent">0</b><span>envios</span></div>
+      </div>
+    </div>
+
+    <button class="go" id="startBtn" onclick="toggleRun()"><span class="msi">play_arrow</span> Iniciar transmissão</button>
+    <p class="hint">O cliente vê sua posição em tempo real no app, na tela <b>Leva &amp; Traz → Acompanhar</b>. Use o mesmo <b>código</b> dos dois lados.</p>
+    <div class="card"><div class="log" id="log">Pronto.</div></div>
+  </div>
+</div>
+
+<script>
+/* ---- tema ---- */
+const root=document.documentElement,tbtn=document.getElementById('theme');
+const sysT=()=>matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+function applyTheme(t){root.setAttribute('data-theme',t);tbtn.innerHTML=t==='dark'?'<span class="msi">light_mode</span>':'<span class="msi">dark_mode</span>';try{localStorage.setItem('petnexus_theme',t)}catch(_){}}
+let sv=null;try{sv=localStorage.getItem('petnexus_theme')}catch(_){}
+applyTheme(sv||sysT());
+tbtn.onclick=()=>applyTheme(root.getAttribute('data-theme')==='dark'?'light':'dark');
+
+function log(m){const el=document.getElementById('log');const t=new Date().toLocaleTimeString('pt-BR');el.innerHTML=`[${t}] ${m}<br>`+el.innerHTML;}
+
+/* ---- conexão ---- */
+const conn=document.getElementById('conn'),connTxt=document.getElementById('connTxt');
+if(window.PetNexusRT && PetNexusRT.available()){conn.className='conn ok';connTxt.textContent='Supabase conectado (Realtime)';}
+else{conn.className='conn err';connTxt.textContent='Supabase não configurado — verifique petnexus-config.js';}
+
+/* ---- mapa ---- */
+const JV={lat:-23.7038,lng:-46.7090};
+let map,van;
+function initMap(){
+  if(typeof L==='undefined'){document.getElementById('map').innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Mapa indisponível (sem internet)</div>';return;}
+  const dark=root.getAttribute('data-theme')==='dark';
+  map=L.map('map',{zoomControl:false,attributionControl:false}).setView([JV.lat,JV.lng],15);
+  L.tileLayer(dark?'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png':'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(map);
+  const icon=L.divIcon({className:'',html:'<div class="van-marker"><span class="msi">local_shipping</span></div>',iconSize:[40,40],iconAnchor:[20,20]});
+  van=L.marker([JV.lat,JV.lng],{icon}).addTo(map);
+}
+initMap();
+
+/* ---- estado ---- */
+let mode='gps',running=false,rt=null,rtFleet=null,sent=0,watchId=null,simTimer=null,lastPos=null,lastTs=0,runCode='demo';
+const DRIVER_NAME='Carlos Mendes';
+const route=[[-23.6985,-46.7155],[-23.7002,-46.7128],[-23.7021,-46.7101],[-23.7044,-46.7078],[-23.7061,-46.7052],[-23.7083,-46.7031],[-23.7099,-46.7008]];
+
+function setMode(m){if(running)return;mode=m;
+  document.getElementById('mGps').classList.toggle('on',m==='gps');
+  document.getElementById('mSim').classList.toggle('on',m==='sim');
+  document.getElementById('modeHint').innerHTML=m==='gps'
+    ?'Usa o GPS real do aparelho. Ideal no celular do entregador.'
+    :'Simula um trajeto pelo Jardim Varginha — ótimo para testar no computador.';
+}
+
+function haversine(a,b){const R=6371000,r=x=>x*Math.PI/180;const dLat=r(b[0]-a[0]),dLng=r(b[1]-a[1]);
+  const s=Math.sin(dLat/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(s));}
+
+function broadcast(lat,lng,acc){
+  const now=Date.now();let speed=0,heading=0;
+  if(lastPos){const d=haversine(lastPos,[lat,lng]);const dt=Math.max(0.5,(now-lastTs)/1000);speed=d/dt;
+    heading=Math.atan2(lng-lastPos[1],lat-lastPos[0])*180/Math.PI;}
+  lastPos=[lat,lng];lastTs=now;
+  if(van){van.setLatLng([lat,lng]);map&&map.panTo([lat,lng],{animate:true});}
+  const payload={code:runCode,name:DRIVER_NAME,lat,lng,heading,speed,acc:acc||null,ts:now};
+  if(rt){rt.sendPos(payload);sent++;}
+  if(rtFleet){rtFleet.sendPos(payload);}
+  document.getElementById('mSpeed').textContent=(speed*3.6).toFixed(0);
+  document.getElementById('mAcc').textContent=acc?acc.toFixed(0):'—';
+  document.getElementById('mSent').textContent=sent;
+}
+
+function startGps(){
+  if(!navigator.geolocation){log('Geolocalização não suportada — use "Simular trajeto".');return false;}
+  document.getElementById('status').textContent='Obtendo GPS…';
+  watchId=navigator.geolocation.watchPosition(
+    p=>{document.getElementById('status').textContent='A caminho (GPS)';broadcast(p.coords.latitude,p.coords.longitude,p.coords.accuracy);},
+    e=>{log('Erro de GPS: '+e.message+' — tente "Simular trajeto".');},
+    {enableHighAccuracy:true,maximumAge:1000,timeout:15000}
+  );
+  return true;
+}
+
+function startSim(){
+  document.getElementById('status').textContent='A caminho (simulação)';
+  // interpola ao longo da rota, ~48s
+  const segs=[];let total=0;
+  for(let i=0;i<route.length-1;i++){const len=haversine(route[i],route[i+1]);segs.push({a:route[i],b:route[i+1],len});total+=len;}
+  let t=0;const dur=48;
+  simTimer=setInterval(()=>{
+    t+=1;const frac=Math.min(1,t/dur);let d=frac*total;let pos=route[route.length-1];
+    for(const s of segs){if(d<=s.len||s===segs[segs.length-1]){const r=s.len?Math.min(1,d/s.len):0;pos=[s.a[0]+(s.b[0]-s.a[0])*r,s.a[1]+(s.b[1]-s.a[1])*r];break;}d-=s.len;}
+    broadcast(pos[0],pos[1],8);
+    if(frac>=1){document.getElementById('status').textContent='Chegou ao destino 🎉';clearInterval(simTimer);simTimer=null;}
+  },1000);
+  return true;
+}
+
+function toggleRun(){
+  if(running){stopRun();return;}
+  const code=(document.getElementById('code').value||'demo').trim()||'demo';
+  runCode=code;
+  rt=null;rtFleet=null;
+  if(window.PetNexusRT && PetNexusRT.available()){
+    rt=PetNexusRT.join(code,'entregador');
+    if(rt){rt.subscribe(s=>{if(s==='SUBSCRIBED'){rt.track({role:'entregador',code:code,name:DRIVER_NAME,ts:Date.now()});log('Canal "'+rt.code+'" conectado. Transmitindo…');}});}
+    rtFleet=PetNexusRT.join('frota','entregador');
+    if(rtFleet){rtFleet.subscribe(s=>{if(s==='SUBSCRIBED'){rtFleet.track({role:'entregador',code:code,name:DRIVER_NAME,ts:Date.now()});log('Frota conectada — visível no CRM.');}});}
+  }else{log('Sem Supabase: transmitindo só localmente (o cliente não recebe). Configure petnexus-config.js.');}
+  const ok = mode==='gps'?startGps():startSim();
+  if(ok===false)return;
+  running=true;sent=0;
+  const b=document.getElementById('startBtn');b.classList.add('stop');b.innerHTML='<span class="msi">stop</span> Encerrar transmissão';
+  document.getElementById('liveTag').style.display='inline-flex';
+  document.getElementById('code').disabled=true;
+  log('Transmissão iniciada — código "'+code+'" ('+(mode==='gps'?'GPS':'simulação')+').');
+}
+
+function stopRun(){
+  running=false;
+  if(watchId!=null){navigator.geolocation.clearWatch(watchId);watchId=null;}
+  if(simTimer){clearInterval(simTimer);simTimer=null;}
+  if(rt){rt.leave();rt=null;}
+  if(rtFleet){rtFleet.leave();rtFleet=null;}
+  lastPos=null;
+  const b=document.getElementById('startBtn');b.classList.remove('stop');b.innerHTML='<span class="msi">play_arrow</span> Iniciar transmissão';
+  document.getElementById('liveTag').style.display='none';
+  document.getElementById('status').textContent='Parado';
+  document.getElementById('code').disabled=false;
+  log('Transmissão encerrada.');
+}
+addEventListener('pagehide',()=>{if(rt)rt.leave();if(rtFleet)rtFleet.leave();});
+
+/* ===== AUTH ENTREGADOR ===== */
+function entFirebaseErr(e){
+  const map={
+    'auth/invalid-email':'E-mail inválido.',
+    'auth/user-not-found':'Usuário não encontrado.',
+    'auth/wrong-password':'Senha incorreta.',
+    'auth/invalid-credential':'E-mail ou senha incorretos.',
+    'auth/email-already-in-use':'E-mail já cadastrado. Tente entrar.',
+    'auth/weak-password':'Senha fraca — use ao menos 6 caracteres.',
+    'auth/too-many-requests':'Muitas tentativas. Aguarde alguns minutos.',
+    'auth/network-request-failed':'Sem conexão. Verifique sua internet.',
+    'auth/popup-closed-by-user':'Login cancelado.',
+    'auth/cancelled-popup-request':'Login cancelado.',
+  };
+  return map[e&&e.code]||'Erro inesperado. Tente novamente.';
+}
+function entErrShow(id,msg){const el=document.getElementById(id);if(el){el.textContent=msg;el.classList.add('show');}}
+function entErrClear(){['entAuthErr','entAuthErrC'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent='';el.classList.remove('show');}});}
+function entBusy(b){
+  ['entBtnEntrar','entBtnCadastrar','entBtnGoogle','entBtnGoogleC'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=b;});
+}
+function entAuthTab(tab){
+  const e=tab==='entrar';
+  document.getElementById('entTabEntrar').classList.toggle('on',e);
+  document.getElementById('entTabCadastro').classList.toggle('on',!e);
+  document.getElementById('entFormEntrar').classList.toggle('hidden',!e);
+  document.getElementById('entFormCadastro').classList.toggle('hidden',e);
+  entErrClear();
+}
+function entShowApp(){const w=document.getElementById('entAuthWrap');if(w)w.style.display='none';}
+function entShowAuth(){const w=document.getElementById('entAuthWrap');if(w)w.style.display='flex';entErrClear();entBusy(false);}
+
+async function entDoLogin(){
+  const A=window.PetNexusAuth;
+  if(!A||!A.available()){entErrShow('entAuthErr','Firebase não configurado em petnexus-firebase.js');return;}
+  entErrClear();
+  const email=document.getElementById('entEmail').value.trim();
+  const senha=document.getElementById('entSenha').value;
+  if(!email||!senha){entErrShow('entAuthErr','Preencha e-mail e senha.');return;}
+  entBusy(true);
+  try{await A.login(email,senha);}
+  catch(e){entBusy(false);entErrShow('entAuthErr',entFirebaseErr(e));}
+}
+async function entDoCadastro(){
+  const A=window.PetNexusAuth;
+  if(!A||!A.available()){entErrShow('entAuthErrC','Firebase não configurado em petnexus-firebase.js');return;}
+  entErrClear();
+  const nome=document.getElementById('entCadNome').value.trim();
+  const email=document.getElementById('entCadEmail').value.trim();
+  const senha=document.getElementById('entCadSenha').value;
+  const senha2=document.getElementById('entCadSenha2').value;
+  if(!nome){entErrShow('entAuthErrC','Informe seu nome.');return;}
+  if(!email){entErrShow('entAuthErrC','Informe seu e-mail.');return;}
+  if(senha.length<6){entErrShow('entAuthErrC','Senha fraca — use ao menos 6 caracteres.');return;}
+  if(senha!==senha2){entErrShow('entAuthErrC','As senhas não coincidem.');return;}
+  entBusy(true);
+  try{await A.signup(email,senha,{nome});}
+  catch(e){entBusy(false);entErrShow('entAuthErrC',entFirebaseErr(e));}
+}
+async function entDoGoogle(){
+  const A=window.PetNexusAuth;
+  if(!A||!A.available()){entErrShow('entAuthErr','Firebase não configurado em petnexus-firebase.js');return;}
+  entErrClear();entBusy(true);
+  try{await A.loginGoogle();}
+  catch(e){entBusy(false);entErrShow('entAuthErr',entFirebaseErr(e));}
+}
+async function entDoReset(){
+  const A=window.PetNexusAuth;
+  if(!A||!A.available()){return;}
+  const email=document.getElementById('entEmail').value.trim();
+  if(!email){entErrShow('entAuthErr','Informe o e-mail para recuperar a senha.');return;}
+  try{await A.resetByEmail(email);entErrShow('entAuthErr','E-mail de redefinição enviado ✓');}
+  catch(e){entErrShow('entAuthErr',entFirebaseErr(e));}
+}
+
+// Enter key nos campos
+;['entEmail','entSenha'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter')entDoLogin();});});
+;['entCadEmail','entCadNome','entCadSenha','entCadSenha2'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter')entDoCadastro();});});
+
+// Conecta ao estado Firebase
+;(function entWireAuth(){
+  const A=window.PetNexusAuth;
+  if(!A||!A.available()){
+    // Firebase não configurado — permite acesso direto (modo dev)
+    entShowApp();return;
+  }
+  A.onUser(function(user){
+    if(user){entShowApp();}else{entShowAuth();}
+  });
+})();
+</script>
+</body>
+</html>
