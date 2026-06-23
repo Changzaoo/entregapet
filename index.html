@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-<title>PetNexus Entregador — Transmissão ao vivo</title>
+<title>PetNexus Entregador</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
@@ -16,8 +16,10 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="petnexus-firebase.js"></script>
-<script>window.PETNEXUS_APP_ROLE='entregador';</script>
+<script>window.PETNEXUS_APP_ROLE='entregador';window.PETNEXUS_APP_DOMAIN='entregapet.com';</script>
 <script src="petnexus-auth.js"></script>
+<script src="petnexus-data.js"></script>
+<script src="petnexus-tour.js"></script>
 <style>
 :root{
   color-scheme:light;
@@ -30,11 +32,12 @@
   --shadow:0 12px 40px -12px rgba(20,40,50,.18),0 2px 8px -2px rgba(20,40,50,.06);
   --shadow-sm:0 4px 16px -6px rgba(20,40,50,.12);
   --spring:cubic-bezier(.2,.8,.2,1);
+  --amber:#E8A317;
 }
 [data-theme="dark"]{
   color-scheme:dark;
   --accent:#2DD4DF;--accent-2:#5EE7F0;--coral:#FF8A57;--coral-2:#FF7038;
-  --verde:#2BD18A;
+  --verde:#2BD18A;--amber:#F2B84B;
   --page:#000;--bg:#0A0A0C;--surface:#1C1C1E;--surface-2:#2C2C2E;
   --text:#F5F5F7;--muted:#A1A1A6;--faint:#6E7077;
   --border:rgba(255,255,255,.12);--hair:rgba(255,255,255,.07);
@@ -49,10 +52,10 @@ h1,h2,h3{letter-spacing:-.02em;font-weight:700}
 .msi{font-family:'Material Symbols Rounded';font-weight:normal;line-height:1;vertical-align:middle;display:inline-block;
   font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24}
 .bar{background:var(--grad);color:#fff;padding:20px 18px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-.bar .t{display:flex;align-items:center;gap:11px}
-.bar .mk{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:20px;backdrop-filter:blur(6px)}
-.bar h1{font-size:1.18rem;color:#fff}.bar small{font-size:.74rem;opacity:.9;font-weight:600}
-.tg{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.18);border:none;color:#fff;font-size:17px;cursor:pointer;backdrop-filter:blur(6px)}
+.bar .t{display:flex;align-items:center;gap:11px;min-width:0}
+.bar .mk{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:20px;backdrop-filter:blur(6px);flex:none}
+.bar h1{font-size:1.18rem;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bar small{font-size:.74rem;opacity:.9;font-weight:600}
+.tg{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.18);border:none;color:#fff;font-size:17px;cursor:pointer;backdrop-filter:blur(6px);flex:none;display:grid;place-items:center}
 .body{flex:1;padding:16px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
 .card{background:var(--surface);border:1px solid var(--hair);border-radius:20px;padding:16px;box-shadow:var(--shadow-sm)}
 .conn{display:flex;align-items:center;gap:9px;font-size:.82rem;font-weight:600;color:var(--muted)}
@@ -60,32 +63,118 @@ h1,h2,h3{letter-spacing:-.02em;font-weight:700}
 .conn.ok .dot{background:var(--verde);box-shadow:0 0 0 0 rgba(34,197,94,.5);animation:pp 1.6s infinite}
 .conn.err .dot{background:var(--coral-2)}
 @keyframes pp{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}100%{box-shadow:0 0 0 7px rgba(34,197,94,0)}}
+.fld{display:flex;flex-direction:column}
 .fld label{display:block;font-size:.74rem;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
-.fld input{width:100%;padding:13px 14px;border:1.5px solid var(--border);border-radius:13px;font-size:1rem;font-family:inherit;background:var(--surface-2);color:var(--text);font-weight:600}
-.fld input:focus{outline:none;border-color:var(--accent);background:var(--surface)}
-.seg{display:flex;gap:6px;background:var(--surface-2);border-radius:14px;padding:5px;margin-top:12px}
-.seg button{flex:1;border:none;background:transparent;color:var(--muted);font-family:inherit;font-weight:700;font-size:.86rem;padding:10px;border-radius:10px;cursor:pointer;transition:.2s var(--spring);display:flex;align-items:center;justify-content:center;gap:6px}
-.seg button.on{background:var(--surface);color:var(--accent-2);box-shadow:var(--shadow-sm)}
-#map{height:clamp(240px,40vh,360px);width:100%;border-radius:18px;overflow:hidden;border:1px solid var(--hair);box-shadow:var(--shadow-sm);z-index:1;background:var(--surface-2)}
+.fld input,.fld select{width:100%;padding:13px 14px;border:1.5px solid var(--border);border-radius:13px;font-size:1rem;font-family:inherit;background:var(--surface-2);color:var(--text);font-weight:600}
+.fld input:focus,.fld select:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#map{height:clamp(240px,42vh,380px);width:100%;border-radius:18px;overflow:hidden;border:1px solid var(--hair);box-shadow:var(--shadow-sm);z-index:1;background:var(--surface-2)}
 .leaflet-top,.leaflet-bottom{z-index:2}.leaflet-container{font-family:inherit}
 .van-marker{background:var(--grad-coral);width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;
   box-shadow:0 8px 20px -4px rgba(240,89,31,.65);border:3px solid #fff}
 .van-marker .msi{font-size:20px}
+.pin{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:grid;place-items:center;border:2.5px solid #fff;box-shadow:0 6px 16px -4px rgba(0,0,0,.4)}
+.pin .msi{transform:rotate(45deg);font-size:16px;color:#fff}
+.pin.orig{background:var(--accent)}.pin.dest{background:var(--coral-2)}
 .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .metric{background:var(--surface-2);border-radius:14px;padding:12px;text-align:center}
-.metric b{display:block;font-size:1.15rem;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-.metric span{font-size:.68rem;color:var(--muted);font-weight:600}
+.metric b{display:block;font-size:1.12rem;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.metric span{font-size:.66rem;color:var(--muted);font-weight:600}
 .go{width:100%;border:none;border-radius:16px;padding:17px;font-family:inherit;font-weight:800;font-size:1.04rem;color:#fff;
   background:var(--grad-coral);cursor:pointer;box-shadow:0 14px 30px -12px rgba(240,89,31,.55);display:flex;align-items:center;justify-content:center;gap:9px;transition:transform .2s var(--spring)}
 .go:active{transform:scale(.97)}
-.go.stop{background:linear-gradient(135deg,#E5484D,#C2363B);box-shadow:0 14px 30px -12px rgba(229,72,77,.55)}
+.go.green{background:linear-gradient(135deg,#22C55E,#15924B);box-shadow:0 14px 30px -12px rgba(34,197,94,.5)}
+.go.teal{background:var(--grad);box-shadow:0 14px 30px -12px rgba(14,124,134,.5)}
 .go:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{width:100%;border:1.5px solid var(--border);border-radius:14px;padding:13px;font-family:inherit;font-weight:700;font-size:.92rem;color:var(--text);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-ghost:active{transform:scale(.98)}
 .hint{font-size:.76rem;color:var(--muted);text-align:center;line-height:1.5}
 .hint b{color:var(--text)}
 .live{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:800;letter-spacing:.05em;padding:5px 11px;border-radius:50px;
   background:color-mix(in srgb,var(--verde) 16%,transparent);color:var(--verde)}
 .live .dot{width:7px;height:7px;border-radius:50%;background:var(--verde);animation:pp 1.4s infinite}
-.log{font-size:.72rem;color:var(--faint);font-variant-numeric:tabular-nums;max-height:96px;overflow:auto;line-height:1.6}
+
+/* ---- screens ---- */
+.screen{display:none;flex-direction:column;gap:14px}
+.screen.on{display:flex}
+.sec-title{font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:2px 2px 0;display:flex;align-items:center;gap:8px}
+.sec-title .badge{background:var(--coral-2);color:#fff;border-radius:50px;font-size:.66rem;padding:2px 8px;font-weight:800}
+
+/* ---- corrida card ---- */
+.ride{background:var(--surface);border:1px solid var(--hair);border-radius:20px;padding:15px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:12px}
+.ride-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ride-type{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:5px 10px;border-radius:50px}
+.ride-type.entrega{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent-2)}
+.ride-type.coleta{background:color-mix(in srgb,var(--coral) 18%,transparent);color:var(--coral-2)}
+.ride-val{font-size:1.28rem;font-weight:800;color:var(--verde);font-variant-numeric:tabular-nums}
+.ride-path{display:flex;flex-direction:column;gap:9px;position:relative}
+.ride-path .ln{display:flex;gap:11px;align-items:flex-start}
+.ride-path .ic{width:22px;display:flex;justify-content:center;flex:none;padding-top:1px}
+.ride-path .ic .msi{font-size:18px}
+.ride-path .ic.a .msi{color:var(--accent)}
+.ride-path .ic.b .msi{color:var(--coral-2)}
+.ride-path .txt small{display:block;font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--faint)}
+.ride-path .txt span{font-size:.9rem;font-weight:600;line-height:1.3}
+.ride-path .joiner{position:absolute;left:10px;top:22px;bottom:22px;width:2px;background:repeating-linear-gradient(var(--border) 0 4px,transparent 4px 8px)}
+.ride-meta{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface-2);border-radius:50px;padding:6px 11px;font-size:.76rem;font-weight:700;color:var(--muted)}
+.chip .msi{font-size:15px;color:var(--accent)}
+.chip b{color:var(--text);font-weight:800}
+.ride-cust{font-size:.78rem;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px}
+.ride-cust .msi{font-size:16px}
+.empty{text-align:center;padding:34px 18px;color:var(--muted)}
+.empty .msi{font-size:46px;color:var(--faint);display:block;margin-bottom:10px}
+.empty b{display:block;color:var(--text);font-size:1rem;margin-bottom:4px}
+.empty p{font-size:.84rem;line-height:1.5}
+.spin{width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:rot .8s linear infinite;margin:24px auto}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* ---- status pill (em andamento) ---- */
+.statp{display:inline-flex;align-items:center;gap:6px;font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:4px 10px;border-radius:50px}
+.statp.aceita{background:color-mix(in srgb,var(--amber) 18%,transparent);color:var(--amber)}
+.statp.coletando{background:color-mix(in srgb,var(--coral) 18%,transparent);color:var(--coral-2)}
+.statp.a_caminho{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent-2)}
+.statp.entregue{background:color-mix(in srgb,var(--verde) 16%,transparent);color:var(--verde)}
+
+/* ---- progress steps ---- */
+.steps{display:flex;align-items:center;justify-content:space-between;padding:6px 2px}
+.steps .st{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;position:relative;color:var(--faint)}
+.steps .st .dot{width:30px;height:30px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;border:2px solid var(--border);z-index:1}
+.steps .st .dot .msi{font-size:16px}
+.steps .st small{font-size:.64rem;font-weight:700;text-align:center}
+.steps .st.done{color:var(--verde)}
+.steps .st.done .dot{background:var(--verde);border-color:var(--verde);color:#fff}
+.steps .st.cur{color:var(--accent-2)}
+.steps .st.cur .dot{background:var(--accent);border-color:var(--accent);color:#fff}
+.steps .bar2{position:absolute;top:15px;left:50%;width:100%;height:2px;background:var(--border);z-index:0}
+.steps .st.done .bar2{background:var(--verde)}
+
+/* ---- bottom nav ---- */
+.nav{display:flex;background:var(--surface);border-top:1px solid var(--hair);padding:7px 8px calc(7px + env(safe-area-inset-bottom));position:sticky;bottom:0}
+.nav button{flex:1;border:none;background:none;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 0;color:var(--muted);font-weight:700;font-size:.66rem;cursor:pointer;border-radius:12px;transition:.18s}
+.nav button .msi{font-size:23px}
+.nav button.on{color:var(--accent-2)}
+.nav.hidden{display:none}
+
+/* ---- stars ---- */
+.stars{display:inline-flex;gap:2px;color:var(--amber)}
+.stars .msi{font-size:20px}
+
+/* ---- toast ---- */
+#toast{position:fixed;left:50%;bottom:88px;translate:-50% 0;z-index:9000;
+  background:var(--text);color:var(--bg);padding:12px 18px;border-radius:14px;font-weight:700;font-size:.86rem;
+  box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.3s var(--spring);max-width:90%;text-align:center}
+#toast.show{opacity:1;translate:-50% -8px}
+
+/* ---- modal confirmar ---- */
+.modal{position:fixed;inset:0;z-index:9500;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(2px)}
+.modal.on{display:flex}
+.sheet{width:100%;max-width:460px;background:var(--surface);border-radius:26px 26px 0 0;padding:24px 20px calc(24px + env(safe-area-inset-bottom));box-shadow:0 -20px 60px -20px rgba(0,0,0,.5);animation:up .3s var(--spring)}
+@media(min-width:480px){.modal{align-items:center}.sheet{border-radius:26px;max-width:420px}}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:translateY(0);opacity:1}}
+.sheet h3{font-size:1.18rem;margin-bottom:4px}
+.sheet p{font-size:.86rem;color:var(--muted);margin-bottom:16px;line-height:1.5}
+.sheet .word{text-align:center;letter-spacing:.25em;font-size:1.3rem;font-weight:800;text-transform:uppercase}
 
 /* ===== TELA DE AUTH ENTREGADOR ===== */
 #entAuthWrap{
@@ -148,18 +237,23 @@ h1,h2,h3{letter-spacing:-.02em;font-weight:700}
 }
 .ent-btn-main:active{transform:scale(.97)}
 .ent-btn-main:disabled{opacity:.5;cursor:not-allowed}
-.ent-sep{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:.76rem;font-weight:600}
-.ent-sep::before,.ent-sep::after{content:"";flex:1;height:1px;background:var(--border)}
-.ent-btn-google{
-  width:100%;padding:12px 15px;border:1.5px solid var(--border);border-radius:13px;
-  background:var(--surface);color:var(--text);font-family:inherit;
-  font-weight:700;font-size:.88rem;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;gap:10px;
-  transition:border-color .18s;
-}
-.ent-btn-google:hover{border-color:var(--accent)}
-.ent-btn-google svg{width:18px;height:18px;flex:none}
 .ent-reset{font-size:.8rem;color:var(--accent);font-weight:600;cursor:pointer;background:none;border:none;font-family:inherit;text-align:center;padding:3px}
+
+/* ---- uploader de documentos (cadastro) ---- */
+.doc-tipo{border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);border-radius:13px;padding:11px;font-family:inherit;font-weight:700;font-size:.9rem;cursor:pointer;transition:.18s}
+.doc-tipo.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent-2)}
+.doc-grid{display:flex;flex-direction:column;gap:10px}
+.doc-up{display:flex;align-items:center;gap:12px;border:1.5px dashed var(--border);border-radius:14px;padding:10px;cursor:pointer;background:var(--surface-2);transition:.18s}
+.doc-up:active{transform:scale(.99)}
+.doc-up.has{border-style:solid;border-color:var(--verde);background:color-mix(in srgb,var(--verde) 8%,transparent)}
+.doc-up input{display:none}
+.doc-thumb{width:54px;height:54px;border-radius:11px;background:var(--surface);display:grid;place-items:center;flex:none;background-size:cover;background-position:center;overflow:hidden;border:1px solid var(--hair)}
+.doc-thumb .msi{font-size:24px;color:var(--muted)}
+.doc-up.has .doc-thumb .msi{display:none}
+.doc-info{display:flex;flex-direction:column;min-width:0}
+.doc-info b{font-size:.88rem;font-weight:700;letter-spacing:-.01em}
+.doc-info .doc-state{font-size:.74rem;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.doc-up.has .doc-info .doc-state{color:var(--verde)}
 </style>
 </head>
 <body>
@@ -169,21 +263,17 @@ h1,h2,h3{letter-spacing:-.02em;font-weight:700}
   <div class="ent-auth-inner">
     <div class="ent-auth-head">
       <div class="mk"><span class="msi">local_shipping</span></div>
-      <h1>PetNexus Entregador</h1>
-      <p>Faça login para iniciar as entregas</p>
+      <h1><span class="msi" style="font-size:24px;vertical-align:-2px;margin-right:4px">lock</span>PetNexus Entregador</h1>
+      <p>Acesso restrito — entre para começar a entregar</p>
     </div>
     <div class="ent-auth-body">
-      <div class="ent-auth-tabs" role="tablist">
-        <button class="ent-auth-tab on" id="entTabEntrar" role="tab" onclick="entAuthTab('entrar')">Entrar</button>
-        <button class="ent-auth-tab" id="entTabCadastro" role="tab" onclick="entAuthTab('cadastro')">Criar conta</button>
-      </div>
 
       <!-- FORM: ENTRAR -->
       <div class="ent-form" id="entFormEntrar">
         <div id="entAuthErr" class="ent-auth-err"></div>
         <div class="fld">
           <label for="entEmail">E-mail</label>
-          <input id="entEmail" type="email" inputmode="email" autocomplete="email" placeholder="seu@email.com">
+          <input id="entEmail" type="email" inputmode="email" autocomplete="email" placeholder="voce@entregapet.com">
         </div>
         <div class="fld">
           <label for="entSenha">Senha</label>
@@ -193,40 +283,12 @@ h1,h2,h3{letter-spacing:-.02em;font-weight:700}
           <span class="msi">login</span> Entrar
         </button>
         <button class="ent-reset" onclick="entDoReset()">Esqueci minha senha</button>
-        <div class="ent-sep">ou</div>
-        <button class="ent-btn-google" id="entBtnGoogle" onclick="entDoGoogle()">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-          Continuar com Google
-        </button>
       </div>
 
-      <!-- FORM: CADASTRO -->
-      <div class="ent-form hidden" id="entFormCadastro">
-        <div id="entAuthErrC" class="ent-auth-err"></div>
-        <div class="fld">
-          <label for="entCadNome">Nome completo</label>
-          <input id="entCadNome" type="text" autocomplete="name" placeholder="Carlos Mendes">
-        </div>
-        <div class="fld">
-          <label for="entCadEmail">E-mail</label>
-          <input id="entCadEmail" type="email" inputmode="email" autocomplete="email" placeholder="seu@email.com">
-        </div>
-        <div class="fld">
-          <label for="entCadSenha">Senha</label>
-          <input id="entCadSenha" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
-        </div>
-        <div class="fld">
-          <label for="entCadSenha2">Confirmar senha</label>
-          <input id="entCadSenha2" type="password" autocomplete="new-password" placeholder="Repita a senha">
-        </div>
-        <button class="ent-btn-main" id="entBtnCadastrar" onclick="entDoCadastro()">
-          <span class="msi">person_add</span> Criar conta de entregador
-        </button>
-        <div class="ent-sep">ou</div>
-        <button class="ent-btn-google" id="entBtnGoogleC" onclick="entDoGoogle()">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-          Continuar com Google
-        </button>
+      <!-- CADASTRO DESABILITADO: contas criadas pelo operador no Firebase -->
+      <div style="text-align:center;padding:14px 6px 2px;color:var(--muted)">
+        <span class="msi" style="font-size:32px;color:var(--muted)">lock</span>
+        <p style="margin:8px 0 0;font-size:.86rem;font-weight:600;line-height:1.45">Cadastro restrito — fale com o administrador para liberar seu acesso.</p>
       </div>
     </div>
   </div>
@@ -235,47 +297,255 @@ h1,h2,h3{letter-spacing:-.02em;font-weight:700}
 
 <div class="app">
   <div class="bar">
-    <div class="t"><span class="mk"><span class="msi">local_shipping</span></span><div><h1>PetNexus Entregador</h1><small>Transmissão de localização ao vivo</small></div></div>
-    <button class="tg" id="theme" aria-label="Alternar tema"><span class="msi">dark_mode</span></button>
+    <div class="t"><span class="mk"><span class="msi">local_shipping</span></span><div><h1 id="barTitle">PetNexus Entregador</h1><small id="barSub">App do entregador</small></div></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="tg" id="entTour" aria-label="Ver tutorial" title="Ver tutorial novamente" onclick="replayTour()"><span class="msi">help</span></button>
+      <button class="tg" id="theme" aria-label="Alternar tema"><span class="msi">dark_mode</span></button>
+      <button class="tg" id="entLogout" aria-label="Sair" title="Sair" onclick="doLogout()"><span class="msi">logout</span></button>
+    </div>
   </div>
-  <div class="body">
-    <div class="card">
-      <div class="conn" id="conn"><span class="dot"></span><span id="connTxt">Verificando conexão…</span></div>
+
+  <div class="body" id="appBody">
+
+    <!-- ===== LOADING ===== -->
+    <div class="screen on" id="scLoad">
+      <div class="spin"></div>
+      <p class="hint">Carregando seu painel…</p>
     </div>
 
-    <div class="card">
-      <div class="fld">
-        <label for="code">Código da entrega</label>
-        <input id="code" value="demo" autocomplete="off" inputmode="text" aria-label="Código da entrega">
+    <!-- ===== CADASTRO COMPLETO ===== -->
+    <div class="screen" id="scCadastro">
+      <div class="card" style="text-align:center">
+        <span class="msi" style="font-size:42px;color:var(--coral-2)">badge</span>
+        <h2 style="font-size:1.2rem;margin-top:6px">Complete seu cadastro</h2>
+        <p class="hint" style="margin-top:6px" id="cadIntro">Precisamos de alguns dados para liberar você como entregador PetNexus.</p>
       </div>
-      <div class="seg" role="group" aria-label="Fonte da localização">
-        <button id="mGps" class="on" onclick="setMode('gps')"><span class="msi">my_location</span> Meu GPS</button>
-        <button id="mSim" onclick="setMode('sim')"><span class="msi">route</span> Simular trajeto</button>
+      <div id="cadErr" class="ent-auth-err"></div>
+      <div class="card" style="display:flex;flex-direction:column;gap:13px">
+        <div class="fld"><label for="cNome">Nome completo</label><input id="cNome" type="text" placeholder="Carlos Mendes"></div>
+        <div class="fld"><label for="cMae">Nome da mãe</label><input id="cMae" type="text" placeholder="Maria Mendes"></div>
+        <div class="row2">
+          <div class="fld"><label for="cCpf">CPF</label><input id="cCpf" type="text" inputmode="numeric" placeholder="000.000.000-00"></div>
+          <div class="fld"><label for="cTel">Telefone</label><input id="cTel" type="tel" inputmode="tel" placeholder="(11) 90000-0000"></div>
+        </div>
+
+        <div class="fld">
+          <label>Tipo de veículo</label>
+          <div class="seg-veic" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <button type="button" class="veic-opt on" id="veicMoto" onclick="selVeic('moto')"
+              style="border:1.5px solid var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);border-radius:14px;padding:12px;text-align:left;cursor:pointer;font-family:inherit">
+              <span class="msi" style="font-size:26px;color:var(--accent-2)">two_wheeler</span>
+              <b style="display:block;font-size:.92rem;margin-top:3px;color:var(--text)">Moto</b>
+              <span style="font-size:.7rem;color:var(--muted);font-weight:600">Cargas até 15 kg</span>
+            </button>
+            <button type="button" class="veic-opt" id="veicCarro" onclick="selVeic('carro')"
+              style="border:1.5px solid var(--border);background:var(--surface-2);border-radius:14px;padding:12px;text-align:left;cursor:pointer;font-family:inherit">
+              <span class="msi" style="font-size:26px;color:var(--muted)">directions_car</span>
+              <b style="display:block;font-size:.92rem;margin-top:3px;color:var(--text)">Carro</b>
+              <span style="font-size:.7rem;color:var(--muted);font-weight:600">Acima de 15 kg + cães</span>
+            </button>
+          </div>
+          <p class="hint" style="text-align:left;margin-top:8px">A <b>moto</b> leva cargas até 15 kg. O <b>carro</b> leva acima de 15 kg e pode transportar cães.</p>
+        </div>
+
+        <div class="row2">
+          <div class="fld"><label for="cModelo">Modelo do veículo</label><input id="cModelo" type="text" placeholder="Honda CG 160"></div>
+          <div class="fld"><label for="cPlaca">Placa</label><input id="cPlaca" type="text" placeholder="ABC1D23" style="text-transform:uppercase"></div>
+        </div>
+        <div class="fld"><label for="cCnh">Número da CNH</label><input id="cCnh" type="text" inputmode="numeric" placeholder="00000000000"></div>
+
+        <!-- ===== DOCUMENTOS ===== -->
+        <div style="border-top:1px solid var(--hair);margin-top:2px;padding-top:14px">
+          <div class="sec-title" style="padding:0 0 2px"><span class="msi" style="font-size:17px;color:var(--coral-2)">folder_shared</span> Documentos</div>
+          <p class="hint" style="text-align:left;margin:6px 0 12px">Envie fotos legíveis. Aceitamos o <b>CPF</b> ou a nova <b>Carteira de Identidade Nacional (CIN)</b>. Usamos só para verificar você.</p>
+
+          <div class="fld">
+            <label>Documento de identidade</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <button type="button" class="doc-tipo on" id="dtCpf" onclick="selDocTipo('cpf')">CPF</button>
+              <button type="button" class="doc-tipo" id="dtRg" onclick="selDocTipo('rg')">RG / CIN</button>
+            </div>
+          </div>
+          <div class="fld" id="docNumWrap" style="display:none;margin-top:10px">
+            <label for="cDocNum">Número do RG / CIN</label>
+            <input id="cDocNum" type="text" inputmode="numeric" placeholder="00.000.000-0">
+          </div>
+
+          <div class="doc-grid" style="margin-top:12px">
+            <label class="doc-up" data-doc="frente">
+              <input type="file" accept="image/*" capture="environment" onchange="onDocChange('frente',this)">
+              <div class="doc-thumb"><span class="msi">photo_camera</span></div>
+              <div class="doc-info"><b>Documento — frente</b><span class="doc-state">Obrigatório · toque para enviar</span></div>
+            </label>
+            <label class="doc-up" data-doc="verso">
+              <input type="file" accept="image/*" capture="environment" onchange="onDocChange('verso',this)">
+              <div class="doc-thumb"><span class="msi">photo_camera</span></div>
+              <div class="doc-info"><b>Documento — verso</b><span class="doc-state">Obrigatório · toque para enviar</span></div>
+            </label>
+            <label class="doc-up" data-doc="selfie">
+              <input type="file" accept="image/*" capture="user" onchange="onDocChange('selfie',this)">
+              <div class="doc-thumb"><span class="msi">account_circle</span></div>
+              <div class="doc-info"><b>Selfie com o documento</b><span class="doc-state">Segure o documento ao lado do rosto</span></div>
+            </label>
+            <label class="doc-up" data-doc="cnh">
+              <input type="file" accept="image/*" capture="environment" onchange="onDocChange('cnh',this)">
+              <div class="doc-thumb"><span class="msi">id_card</span></div>
+              <div class="doc-info"><b>CNH (foto)</b><span class="doc-state">Opcional · recomendado p/ moto e carro</span></div>
+            </label>
+            <label class="doc-up" data-doc="veiculo">
+              <input type="file" accept="image/*" capture="environment" onchange="onDocChange('veiculo',this)">
+              <div class="doc-thumb"><span class="msi">photo_camera</span></div>
+              <div class="doc-info"><b>Foto do veículo</b><span class="doc-state">Opcional · placa visível</span></div>
+            </label>
+          </div>
+          <p class="hint" style="text-align:left;margin-top:10px"><span class="msi" style="font-size:14px;vertical-align:middle;color:var(--verde)">lock</span> Suas fotos vão direto para a equipe PetNexus e não ficam públicas.</p>
+        </div>
       </div>
-      <p class="hint" id="modeHint" style="margin-top:10px">Usa o GPS real do aparelho. Ideal no celular do entregador.</p>
+      <button class="go" id="cadBtn" onclick="enviarCadastro()"><span class="msi">send</span> Enviar cadastro</button>
     </div>
 
-    <div id="map"></div>
+    <!-- ===== AGUARDANDO / REJEITADO ===== -->
+    <div class="screen" id="scStatus">
+      <div class="card" id="statusCard" style="text-align:center;padding:30px 20px">
+        <div id="statusIcon" style="width:78px;height:78px;border-radius:24px;margin:0 auto 16px;display:grid;place-items:center;background:color-mix(in srgb,var(--amber) 16%,transparent)">
+          <span class="msi" id="statusEmoji" style="font-size:42px;color:var(--amber)">hourglass_top</span>
+        </div>
+        <h2 id="statusTitle" style="font-size:1.3rem">Cadastro em análise</h2>
+        <p id="statusMsg" class="hint" style="margin-top:10px;font-size:.9rem">A equipe PetNexus vai revisar seus dados e aprovar você em breve. Volte mais tarde.</p>
+        <div id="statusReason" class="card" style="display:none;margin-top:16px;background:color-mix(in srgb,#E5484D 8%,transparent);box-shadow:none;text-align:left">
+          <small style="font-size:.68rem;font-weight:800;text-transform:uppercase;color:#C2363B;letter-spacing:.05em">Motivo</small>
+          <p id="statusReasonTxt" style="font-size:.86rem;margin-top:4px;color:var(--text)"></p>
+        </div>
+      </div>
+      <button class="go teal" id="statusRefresh" onclick="recarregar()"><span class="msi">refresh</span> Verificar de novo</button>
+      <button class="btn-ghost" id="statusResend" style="display:none" onclick="reenviarCadastro()"><span class="msi">edit</span> Editar e reenviar cadastro</button>
+    </div>
 
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <b style="font-size:.9rem" id="status">Parado</b>
-        <span class="live" id="liveTag" style="display:none"><span class="dot"></span> TRANSMITINDO</span>
+    <!-- ===== LISTA DE CORRIDAS ===== -->
+    <div class="screen" id="scCorridas">
+      <div class="card" style="padding:13px 16px">
+        <div class="conn" id="conn"><span class="dot"></span><span id="connTxt">Verificando conexão…</span></div>
+      </div>
+
+      <div class="sec-title"><span class="msi" style="font-size:17px;color:var(--coral-2)">bolt</span> Em andamento <span class="badge" id="badgeAtivas" style="display:none">0</span></div>
+      <div id="listAtivas"></div>
+
+      <div class="sec-title"><span class="msi" style="font-size:17px;color:var(--accent-2)">explore</span> Ofertas disponíveis</div>
+      <div id="listOfertas"><div class="spin"></div></div>
+
+      <button class="btn-ghost" onclick="carregarCorridas()"><span class="msi">refresh</span> Atualizar</button>
+    </div>
+
+    <!-- ===== CORRIDA ATIVA ===== -->
+    <div class="screen" id="scAtiva">
+      <button class="btn-ghost" style="width:auto;align-self:flex-start;padding:9px 14px" onclick="voltarLista()"><span class="msi">arrow_back</span> Voltar</button>
+
+      <div id="map"></div>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <span class="ride-type" id="atvType">Entrega</span>
+          <span class="ride-val" id="atvVal">R$ 0,00</span>
+        </div>
+        <div class="ride-path">
+          <div class="joiner"></div>
+          <div class="ln"><div class="ic a"><span class="msi">radio_button_checked</span></div>
+            <div class="txt"><small>Coleta em</small><span id="atvOrig">—</span></div></div>
+          <div class="ln"><div class="ic b"><span class="msi">location_on</span></div>
+            <div class="txt"><small>Entrega em</small><span id="atvDest">—</span></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="steps" id="atvSteps">
+          <div class="st" data-step="aceita"><div class="bar2"></div><div class="dot"><span class="msi">task_alt</span></div><small>Aceita</small></div>
+          <div class="st" data-step="coletando"><div class="bar2"></div><div class="dot"><span class="msi">inventory_2</span></div><small>Coletado</small></div>
+          <div class="st" data-step="a_caminho"><div class="bar2"></div><div class="dot"><span class="msi">navigation</span></div><small>A caminho</small></div>
+          <div class="st" data-step="entregue"><div class="bar2"></div><div class="dot"><span class="msi">check_circle</span></div><small>Entregue</small></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <b style="font-size:.9rem" id="gpsStatus">Aguardando GPS…</b>
+          <span class="live" id="liveTag" style="display:none"><span class="dot"></span> AO VIVO</span>
+        </div>
+        <div class="metrics">
+          <div class="metric"><b id="mEta">—</b><span>ETA (min)</span></div>
+          <div class="metric"><b id="mDist">—</b><span>distância (km)</span></div>
+          <div class="metric"><b id="mAcc">—</b><span>precisão (m)</span></div>
+        </div>
+      </div>
+
+      <button class="go" id="atvAction" onclick="acaoCorrida()"><span class="msi">inventory_2</span> Cheguei na loja / Coletei</button>
+      <p class="hint" id="atvHint">Ative o GPS quando começar o trajeto. O cliente acompanha sua posição em tempo real.</p>
+    </div>
+
+    <!-- ===== SUCESSO ===== -->
+    <div class="screen" id="scSucesso">
+      <div class="card" style="text-align:center;padding:36px 22px">
+        <div style="width:90px;height:90px;border-radius:28px;margin:0 auto 18px;display:grid;place-items:center;background:color-mix(in srgb,var(--verde) 16%,transparent)">
+          <span class="msi" style="font-size:50px;color:var(--verde)">check_circle</span>
+        </div>
+        <h2 style="font-size:1.5rem">Entrega concluída! 🎉</h2>
+        <p class="hint" style="margin-top:8px">Você recebeu</p>
+        <div style="font-size:2.4rem;font-weight:800;color:var(--verde);margin:6px 0;font-variant-numeric:tabular-nums" id="sucValor">R$ 0,00</div>
+        <p class="hint">O valor entra no seu saldo de ganhos.</p>
+      </div>
+      <button class="go green" onclick="irPara('corridas');carregarCorridas()"><span class="msi">explore</span> Ver novas corridas</button>
+    </div>
+
+    <!-- ===== GANHOS ===== -->
+    <div class="screen" id="scGanhos">
+      <div class="card" style="text-align:center;padding:26px 20px;background:var(--grad);color:#fff;border:none">
+        <small style="font-size:.74rem;font-weight:700;opacity:.85;text-transform:uppercase;letter-spacing:.06em">Total ganho</small>
+        <div style="font-size:2.6rem;font-weight:800;margin-top:4px;font-variant-numeric:tabular-nums" id="gTotal">R$ 0,00</div>
       </div>
       <div class="metrics">
-        <div class="metric"><b id="mSpeed">—</b><span>km/h</span></div>
-        <div class="metric"><b id="mAcc">—</b><span>precisão (m)</span></div>
-        <div class="metric"><b id="mSent">0</b><span>envios</span></div>
+        <div class="metric" style="padding:16px 12px"><b id="gEntregas" style="font-size:1.5rem">0</b><span>entregas</span></div>
+        <div class="metric" style="padding:16px 12px"><b id="gNota" style="font-size:1.5rem">—</b><span>nota média</span></div>
+        <div class="metric" style="padding:16px 12px"><b id="gVeic" style="font-size:1.1rem">—</b><span>veículo</span></div>
       </div>
+      <div class="card" style="text-align:center">
+        <small style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Sua avaliação</small>
+        <div class="stars" id="gStars" style="margin-top:8px">
+          <span class="msi">star</span><span class="msi">star</span><span class="msi">star</span><span class="msi">star</span><span class="msi">star</span>
+        </div>
+      </div>
+      <button class="btn-ghost" onclick="carregarGanhos()"><span class="msi">refresh</span> Atualizar</button>
     </div>
 
-    <button class="go" id="startBtn" onclick="toggleRun()"><span class="msi">play_arrow</span> Iniciar transmissão</button>
-    <p class="hint">O cliente vê sua posição em tempo real no app, na tela <b>Leva &amp; Traz → Acompanhar</b>. Use o mesmo <b>código</b> dos dois lados.</p>
-    <div class="card"><div class="log" id="log">Pronto.</div></div>
+  </div>
+
+  <!-- ===== BOTTOM NAV ===== -->
+  <div class="nav hidden" id="nav">
+    <button id="navCorridas" class="on" onclick="irPara('corridas');carregarCorridas()"><span class="msi">explore</span>Corridas</button>
+    <button id="navGanhos" onclick="irPara('ganhos');carregarGanhos()"><span class="msi">payments</span>Ganhos</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- modal confirmar entrega -->
+<div class="modal" id="confirmModal">
+  <div class="sheet">
+    <h3>Confirmar entrega</h3>
+    <p>Peça ao cliente a <b>palavra de confirmação</b> e digite abaixo para finalizar a entrega.</p>
+    <div id="confErr" class="ent-auth-err" style="margin-bottom:12px"></div>
+    <div class="fld" style="margin-bottom:16px">
+      <label for="confWord">Palavra do cliente</label>
+      <input id="confWord" class="word" type="text" autocomplete="off" autocapitalize="characters" placeholder="••••">
+    </div>
+    <button class="go green" id="confBtn" onclick="confirmarEntrega()"><span class="msi">lock_open</span> Confirmar</button>
+    <button class="btn-ghost" style="margin-top:10px" onclick="fecharConfirm()">Cancelar</button>
   </div>
 </div>
 
 <script>
+/* ===================================================================
+   PetNexus Entregador — app estilo iFood
+   =================================================================== */
+
 /* ---- tema ---- */
 const root=document.documentElement,tbtn=document.getElementById('theme');
 const sysT=()=>matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
@@ -284,141 +554,775 @@ let sv=null;try{sv=localStorage.getItem('petnexus_theme')}catch(_){}
 applyTheme(sv||sysT());
 tbtn.onclick=()=>applyTheme(root.getAttribute('data-theme')==='dark'?'light':'dark');
 
-function log(m){const el=document.getElementById('log');const t=new Date().toLocaleTimeString('pt-BR');el.innerHTML=`[${t}] ${m}<br>`+el.innerHTML;}
+/* ---- toast ---- */
+let _toastTimer=null;
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(_toastTimer);_toastTimer=setTimeout(()=>t.classList.remove('show'),2800);}
 
-/* ---- conexão ---- */
-const conn=document.getElementById('conn'),connTxt=document.getElementById('connTxt');
-if(window.PetNexusRT && PetNexusRT.available()){conn.className='conn ok';connTxt.textContent='Supabase conectado (Realtime)';}
-else{conn.className='conn err';connTxt.textContent='Supabase não configurado — verifique petnexus-config.js';}
+/* ---- helpers ---- */
+function $(id){return document.getElementById(id);}
+function money(v){const n=Number(v||0);return 'R$ '+n.toFixed(2).replace('.',',');}
+function D(){return window.PetNexusData;}
+function dataOk(){try{return !!(D()&&D().available&&D().available());}catch(_){return false;}}
 
-/* ---- mapa ---- */
-const JV={lat:-23.7038,lng:-46.7090};
-let map,van;
-function initMap(){
-  if(typeof L==='undefined'){document.getElementById('map').innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Mapa indisponível (sem internet)</div>';return;}
-  const dark=root.getAttribute('data-theme')==='dark';
-  map=L.map('map',{zoomControl:false,attributionControl:false}).setView([JV.lat,JV.lng],15);
-  L.tileLayer(dark?'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png':'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(map);
-  const icon=L.divIcon({className:'',html:'<div class="van-marker"><span class="msi">local_shipping</span></div>',iconSize:[40,40],iconAnchor:[20,20]});
-  van=L.marker([JV.lat,JV.lng],{icon}).addTo(map);
+/* ===================================================================
+   MODO DEMO — explora o app sem login/Supabase, com dados mock locais
+   =================================================================== */
+const AUTH_DEMO_KEY='petnexus_entregador_demo_mode';
+let _authDemoMode=false;
+function demoOn(){return _authDemoMode===true;}
+
+// dados mock semeados para a demonstração
+let DEMO_DATA=null;
+function seedDemo(){
+  DEMO_DATA={
+    perfil:{ id:'demo-ent', status:'aprovado', nome_completo:'Carlos Mendes (demo)', tipo_veiculo:'moto' },
+    ganhos:{ ganhos_total:284.50, total_entregas:23, avaliacao_media:4.9, tipo_veiculo:'moto' },
+    corridas:[
+      // corrida ATIVA em andamento (mine)
+      { id:'demo-ativa', mine:true, status:'aceita', tipo:'entrega', valor:14.90,
+        origem:'PetNexus Loja — Av. Paulista, 1000', destino:'Rua das Flores, 240 — Jardins',
+        origem_lat:-23.5614, origem_lng:-46.6560, destino_lat:-23.5710, destino_lng:-46.6680,
+        distancia_km:3.2, eta_min:14, peso_kg:6, pet_nome:'Thor (Golden)' },
+      // ofertas disponíveis (não mine, pendente)
+      { id:'demo-of1', mine:false, status:'pendente', tipo:'entrega', valor:12.50,
+        origem:'PetNexus Loja — Av. Paulista, 1000', destino:'Alameda Santos, 880 — Cerqueira César',
+        origem_lat:-23.5614, origem_lng:-46.6560, destino_lat:-23.5660, destino_lng:-46.6520,
+        distancia_km:2.1, eta_min:9, peso_kg:4, pet_nome:'Mel (Poodle)' },
+      { id:'demo-of2', mine:false, status:'pendente', tipo:'coleta', valor:19.00,
+        origem:'Rua Augusta, 1500 — Consolação', destino:'PetNexus Loja — Av. Paulista, 1000',
+        origem_lat:-23.5540, origem_lng:-46.6620, destino_lat:-23.5614, destino_lng:-46.6560,
+        distancia_km:1.6, eta_min:7, peso_kg:11, pet_nome:'Rex (Labrador)' }
+    ]
+  };
 }
-initMap();
+function demoCorridas(){ if(!DEMO_DATA)seedDemo(); return DEMO_DATA.corridas.slice(); }
+function demoGanhos(){ if(!DEMO_DATA)seedDemo(); return Object.assign({},DEMO_DATA.ganhos); }
 
-/* ---- estado ---- */
-let mode='gps',running=false,rt=null,rtFleet=null,sent=0,watchId=null,simTimer=null,lastPos=null,lastTs=0,runCode='demo';
-const DRIVER_NAME='Carlos Mendes';
-const route=[[-23.6985,-46.7155],[-23.7002,-46.7128],[-23.7021,-46.7101],[-23.7044,-46.7078],[-23.7061,-46.7052],[-23.7083,-46.7031],[-23.7099,-46.7008]];
+function authDemo(){
+  _authDemoMode=true;
+  try{localStorage.setItem(AUTH_DEMO_KEY,'1');}catch(_){}
+  seedDemo();
+  entShowApp();
+  MEU=DEMO_DATA.perfil;
+  irPara('corridas');
+  pintarConn();
+  carregarCorridas();
+  toast('Modo demo ativado — dados locais');
+  maybeStartTour();
+}
 
-function setMode(m){if(running)return;mode=m;
-  document.getElementById('mGps').classList.toggle('on',m==='gps');
-  document.getElementById('mSim').classList.toggle('on',m==='sim');
-  document.getElementById('modeHint').innerHTML=m==='gps'
-    ?'Usa o GPS real do aparelho. Ideal no celular do entregador.'
-    :'Simula um trajeto pelo Jardim Varginha — ótimo para testar no computador.';
+function doLogout(){
+  _authDemoMode=false;
+  try{localStorage.removeItem(AUTH_DEMO_KEY);}catch(_){}
+  try{stopGps();}catch(_){}
+  try{if(window.PetNexusAuth)PetNexusAuth.logout();}catch(_){}
+  entShowAuth();
+}
+
+/* ---- navegação de telas ---- */
+const SCREENS=['scLoad','scCadastro','scStatus','scCorridas','scAtiva','scSucesso','scGanhos'];
+const BAR={
+  load:['PetNexus Entregador','App do entregador'],
+  cadastro:['Cadastro','Complete seus dados'],
+  status:['Cadastro','Aguardando aprovação'],
+  corridas:['Corridas','Suas entregas'],
+  ativa:['Corrida ativa','Em andamento'],
+  sucesso:['Concluído','Entrega finalizada'],
+  ganhos:['Meus ganhos','Saldo e estatísticas']
+};
+function irPara(name){
+  const id='sc'+name.charAt(0).toUpperCase()+name.slice(1);
+  SCREENS.forEach(s=>$(s)&&$(s).classList.toggle('on',s===id));
+  if(BAR[name]){$('barTitle').textContent=BAR[name][0];$('barSub').textContent=BAR[name][1];}
+  // nav só aparece em corridas/ganhos
+  const showNav=(name==='corridas'||name==='ganhos');
+  $('nav').classList.toggle('hidden',!showNav);
+  $('navCorridas').classList.toggle('on',name==='corridas');
+  $('navGanhos').classList.toggle('on',name==='ganhos');
+  $('appBody').scrollTop=0;
+}
+
+/* ---- conexão Supabase ---- */
+function pintarConn(){
+  const conn=$('conn'),txt=$('connTxt');if(!conn)return;
+  if(demoOn()){conn.className='conn ok';txt.textContent='Modo demo — dados de exemplo (sem servidor)';return;}
+  if(dataOk()){conn.className='conn ok';txt.textContent='Conectado — recebendo corridas em tempo real';}
+  else{conn.className='conn err';txt.textContent='Sem conexão com o servidor';}
+}
+
+/* ===================================================================
+   FLUXO PRINCIPAL — decide a tela conforme o status do entregador
+   =================================================================== */
+let MEU=null;            // registro do entregador
+let veicSel='moto';      // tipo de veículo escolhido no cadastro
+
+async function recarregar(){
+  if(demoOn()){ if(!DEMO_DATA)seedDemo(); MEU=DEMO_DATA.perfil; decidirTela(); return; }
+  irPara('load');
+  if(!dataOk()){
+    // sem login/Supabase → volta para auth
+    if(window.PetNexusAuth&&window.PetNexusAuth.available()){entShowAuth();}
+    return;
+  }
+  try{
+    MEU=await D().entregadorMeuStatus();
+    // BYPASS DE TESTE: admin@pet.com entra direto como entregador APROVADO (sem cadastro/aprovação)
+    var _u=window.PetNexusAuth&&PetNexusAuth.user&&PetNexusAuth.user();
+    var _em=(_u&&_u.email)?_u.email.toLowerCase():'';
+    if(_em==='admin@pet.com'&&(!MEU||MEU.status!=='aprovado')){
+      try{MEU=await D().entregadorGarantirAdmin();}catch(e2){}
+    }
+  }catch(e){
+    toast('Não foi possível carregar seu cadastro.');
+    MEU=null;
+  }
+  decidirTela();
+}
+
+function decidirTela(){
+  if(!MEU||!MEU.id){irPara('cadastro');prefillCadastro();return;}
+  const st=MEU.status;
+  if(st==='aprovado'){
+    irPara('corridas');pintarConn();carregarCorridas();return;
+  }
+  if(st==='rejeitado'){mostrarStatus('rejeitado');return;}
+  if(st==='suspenso'){mostrarStatus('suspenso');return;}
+  // pendente (ou qualquer outro) → análise
+  mostrarStatus('pendente');
+}
+
+function mostrarStatus(st){
+  irPara('status');
+  const ic=$('statusIcon'),em=$('statusEmoji'),ti=$('statusTitle'),ms=$('statusMsg');
+  const reason=$('statusReason'),resend=$('statusResend');
+  reason.style.display='none';resend.style.display='none';
+  if(st==='rejeitado'){
+    ic.style.background='color-mix(in srgb,#E5484D 14%,transparent)';
+    em.style.color='#E5484D';em.textContent='cancel';
+    ti.textContent='Cadastro não aprovado';
+    ms.textContent='Infelizmente seu cadastro foi rejeitado. Revise seus dados e envie novamente.';
+    if(MEU&&MEU.motivo_rejeicao){$('statusReasonTxt').textContent=MEU.motivo_rejeicao;reason.style.display='block';}
+    resend.style.display='flex';
+  }else if(st==='suspenso'){
+    ic.style.background='color-mix(in srgb,#E5484D 14%,transparent)';
+    em.style.color='#E5484D';em.textContent='block';
+    ti.textContent='Conta suspensa';
+    ms.textContent='Sua conta está temporariamente suspensa. Entre em contato com a equipe PetNexus.';
+    if(MEU&&MEU.motivo_rejeicao){$('statusReasonTxt').textContent=MEU.motivo_rejeicao;reason.style.display='block';}
+  }else{
+    ic.style.background='color-mix(in srgb,var(--amber) 16%,transparent)';
+    em.style.color='var(--amber)';em.textContent='hourglass_top';
+    ti.textContent='Cadastro em análise';
+    ms.textContent='A equipe PetNexus vai revisar seus dados e aprovar você em breve. Você será notificado — volte mais tarde.';
+  }
+}
+
+/* ===================================================================
+   CADASTRO COMPLETO
+   =================================================================== */
+function selVeic(v){
+  veicSel=v;
+  const m=$('veicMoto'),c=$('veicCarro');
+  const onCss=(el,col)=>{el.style.border='1.5px solid var(--accent)';el.style.background='color-mix(in srgb,var(--accent) 10%,transparent)';el.querySelector('.msi').style.color='var(--accent-2)';};
+  const offCss=(el)=>{el.style.border='1.5px solid var(--border)';el.style.background='var(--surface-2)';el.querySelector('.msi').style.color='var(--muted)';};
+  if(v==='moto'){onCss(m);offCss(c);}else{onCss(c);offCss(m);}
+}
+
+function prefillCadastro(){
+  // preenche o nome com o que veio do Firebase, se houver
+  try{
+    const A=window.PetNexusAuth;const u=A&&A.user&&A.user();const p=A&&A.profile&&A.profile();
+    const nm=(p&&p.nome)||(u&&u.displayName)||'';
+    if(nm&&!$('cNome').value)$('cNome').value=nm;
+  }catch(_){}
+}
+
+function reenviarCadastro(){
+  // pré-preenche o formulário com os dados atuais e abre o cadastro
+  if(MEU){
+    $('cNome').value=MEU.nome_completo||'';
+    $('cMae').value=MEU.nome_mae||'';
+    $('cCpf').value=MEU.cpf||'';
+    $('cTel').value=MEU.telefone||'';
+    $('cModelo').value=MEU.veiculo_modelo||'';
+    $('cPlaca').value=MEU.veiculo_placa||'';
+    $('cCnh').value=MEU.cnh||'';
+    selVeic(MEU.tipo_veiculo==='carro'?'carro':'moto');
+  }
+  $('cadIntro').textContent='Revise seus dados e envie novamente para nova análise.';
+  irPara('cadastro');
+}
+
+/* ---- documentos: tipo + compressão client-side ---- */
+let docTipoSel='cpf';
+const DOCS={};
+function selDocTipo(t){
+  docTipoSel=t;
+  $('dtCpf').classList.toggle('on',t==='cpf');
+  $('dtRg').classList.toggle('on',t==='rg');
+  $('docNumWrap').style.display=(t==='rg')?'':'none';
+}
+// redimensiona p/ no máx 1280px e re-codifica em JPEG (leve o suficiente p/ trafegar via RPC)
+function comprimirImagem(file,maxDim,q){
+  return new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(file);const img=new Image();
+    img.onload=()=>{
+      let w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;
+      const sc=Math.min(1,maxDim/Math.max(w,h));
+      w=Math.max(1,Math.round(w*sc));h=Math.max(1,Math.round(h*sc));
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      const ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      try{resolve(cv.toDataURL('image/jpeg',q));}catch(e){reject(e);}
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('imagem inválida'));};
+    img.src=url;
+  });
+}
+async function onDocChange(key,input){
+  const f=input.files&&input.files[0];if(!f)return;
+  const card=document.querySelector('.doc-up[data-doc="'+key+'"]');
+  const st=card?card.querySelector('.doc-state'):null;const old=st?st.textContent:'';
+  if(st)st.textContent='Processando…';
+  try{
+    const dataUrl=await comprimirImagem(f,1280,0.55);
+    DOCS[key]=dataUrl;
+    if(card){
+      card.classList.add('has');
+      const thumb=card.querySelector('.doc-thumb');if(thumb)thumb.style.backgroundImage='url("'+dataUrl+'")';
+      if(st)st.textContent='Enviado ✓';
+    }
+  }catch(e){
+    if(st)st.textContent=old;
+    input.value='';
+    toast('Não consegui ler essa imagem. Tente outra foto.');
+  }
+}
+
+async function enviarCadastro(){
+  const err=$('cadErr');err.classList.remove('show');err.textContent='';
+  const d={
+    nome:$('cNome').value.trim(),
+    nomeMae:$('cMae').value.trim(),
+    cpf:$('cCpf').value.trim(),
+    telefone:$('cTel').value.trim(),
+    tipoVeiculo:veicSel,
+    modelo:$('cModelo').value.trim(),
+    placa:$('cPlaca').value.trim().toUpperCase(),
+    cnh:$('cCnh').value.trim()
+  };
+  const faltam=[];
+  if(!d.nome)faltam.push('nome completo');
+  if(!d.nomeMae)faltam.push('nome da mãe');
+  if(!d.cpf)faltam.push('CPF');
+  if(!d.telefone)faltam.push('telefone');
+  if(!d.modelo)faltam.push('modelo do veículo');
+  if(!d.placa)faltam.push('placa');
+  if(!d.cnh)faltam.push('CNH');
+  if(!DOCS.frente)faltam.push('foto do documento (frente)');
+  if(!DOCS.verso)faltam.push('foto do documento (verso)');
+  if(faltam.length){err.textContent='Preencha: '+faltam.join(', ')+'.';err.classList.add('show');$('appBody').scrollTop=0;return;}
+  if(!dataOk()){err.textContent='Sem conexão com o servidor. Tente novamente.';err.classList.add('show');return;}
+  const btn=$('cadBtn');btn.disabled=true;btn.innerHTML='<span class="msi">hourglass_top</span> Enviando…';
+  try{
+    await D().entregadorCadastrar(d);
+    // envia os documentos logo após criar/atualizar o cadastro
+    try{
+      await D().entregadorEnviarDocumentos({
+        docTipo:docTipoSel,
+        docNumero:(($('cDocNum')&&$('cDocNum').value)||'').trim()||null,
+        frente:DOCS.frente, verso:DOCS.verso, cnh:DOCS.cnh, selfie:DOCS.selfie, veiculo:DOCS.veiculo
+      });
+    }catch(de){
+      console.warn('docs',de);
+      toast('Cadastro salvo, mas houve erro ao enviar os documentos. Reenvie pela tela de status.');
+    }
+    toast('Cadastro enviado! Aguarde a aprovação.');
+    await recarregar();
+  }catch(e){
+    err.textContent='Erro ao enviar: '+((e&&e.message)||'tente novamente')+'.';err.classList.add('show');$('appBody').scrollTop=0;
+  }finally{
+    btn.disabled=false;btn.innerHTML='<span class="msi">send</span> Enviar cadastro';
+  }
+}
+
+/* ===================================================================
+   LISTA DE CORRIDAS
+   =================================================================== */
+let CORRIDAS=[];
+
+function tipoLabel(t){return t==='coleta'?'Coleta':'Entrega';}
+
+function rideCardHTML(c){
+  const tipo=c.tipo==='coleta'?'coleta':'entrega';
+  const dist=c.distancia_km!=null?Number(c.distancia_km).toFixed(1)+' km':'—';
+  const eta=c.eta_min!=null?Math.round(c.eta_min)+' min':'—';
+  const peso=c.peso_kg!=null?Number(c.peso_kg).toFixed(c.peso_kg%1?1:0)+' kg':'—';
+  const pet=c.pet_nome?`<div class="ride-cust"><span class="msi">pets</span> ${esc(c.pet_nome)}</div>`:'';
+  return `
+  <div class="ride-top">
+    <span class="ride-type ${tipo}"><span class="msi" style="font-size:15px">${tipo==='coleta'?'pets':'local_shipping'}</span> ${tipoLabel(c.tipo)}</span>
+    <span class="ride-val">${money(c.valor)}</span>
+  </div>
+  <div class="ride-path">
+    <div class="joiner"></div>
+    <div class="ln"><div class="ic a"><span class="msi">radio_button_checked</span></div>
+      <div class="txt"><small>Origem</small><span>${esc(c.origem||'—')}</span></div></div>
+    <div class="ln"><div class="ic b"><span class="msi">location_on</span></div>
+      <div class="txt"><small>Destino</small><span>${esc(c.destino||'—')}</span></div></div>
+  </div>
+  <div class="ride-meta">
+    <span class="chip"><span class="msi">straighten</span><b>${dist}</b></span>
+    <span class="chip"><span class="msi">schedule</span><b>${eta}</b></span>
+    <span class="chip"><span class="msi">scale</span><b>${peso}</b></span>
+  </div>
+  ${pet}`;
+}
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+
+async function carregarCorridas(){
+  pintarConn();
+  const ofe=$('listOfertas');
+  if(!ofe)return;
+  if(demoOn()){ CORRIDAS=demoCorridas(); renderCorridas(); return; }
+  if(!dataOk()){ofe.innerHTML=emptyHTML('wifi_off','Sem conexão','Verifique sua internet e tente novamente.');$('listAtivas').innerHTML='';return;}
+  // mostra spinner só se ainda não há nada
+  if(!CORRIDAS.length)ofe.innerHTML='<div class="spin"></div>';
+  try{
+    CORRIDAS=await D().entregadorCorridas()||[];
+  }catch(e){
+    ofe.innerHTML=emptyHTML('error_outline','Erro ao carregar','Não foi possível buscar as corridas. Toque em atualizar.');
+    return;
+  }
+  renderCorridas();
+}
+
+function emptyHTML(icon,title,msg){
+  return `<div class="empty"><span class="msi">${icon}</span><b>${title}</b><p>${msg}</p></div>`;
+}
+
+function renderCorridas(){
+  const ativas=CORRIDAS.filter(c=>c.mine&&c.status!=='entregue'&&c.status!=='cancelada');
+  const ofertas=CORRIDAS.filter(c=>!c.mine&&c.status==='pendente');
+
+  // ---- ativas ----
+  const la=$('listAtivas'),badge=$('badgeAtivas');
+  if(ativas.length){
+    badge.style.display='inline-block';badge.textContent=ativas.length;
+    la.innerHTML=ativas.map(c=>{
+      const stClass=c.status||'aceita';
+      const stLabel={aceita:'Aceita',coletando:'Coletando',a_caminho:'A caminho'}[c.status]||'Aceita';
+      return `<div class="ride" onclick="abrirCorrida('${c.id}')" style="cursor:pointer">
+        <div class="ride-top">
+          <span class="statp ${stClass}"><span class="dot" style="width:7px;height:7px;border-radius:50%;background:currentColor"></span> ${stLabel}</span>
+          <span class="ride-val">${money(c.valor)}</span>
+        </div>
+        <div class="ride-path"><div class="joiner"></div>
+          <div class="ln"><div class="ic a"><span class="msi">radio_button_checked</span></div>
+            <div class="txt"><small>Origem</small><span>${esc(c.origem||'—')}</span></div></div>
+          <div class="ln"><div class="ic b"><span class="msi">location_on</span></div>
+            <div class="txt"><small>Destino</small><span>${esc(c.destino||'—')}</span></div></div>
+        </div>
+        <button class="go teal" style="padding:13px" onclick="event.stopPropagation();abrirCorrida('${c.id}')"><span class="msi">navigation</span> Continuar corrida</button>
+      </div>`;
+    }).join('');
+  }else{
+    badge.style.display='none';la.innerHTML='';
+  }
+
+  // ---- ofertas ----
+  const lo=$('listOfertas');
+  if(ofertas.length){
+    lo.innerHTML=ofertas.map((c,idx)=>`<div class="ride"${idx===0?' data-tour="oferta"':''}>
+      ${rideCardHTML(c)}
+      <button class="go"${idx===0?' data-tour="aceitar"':''} onclick="aceitarCorrida('${c.id}',this)"><span class="msi">check</span> Aceitar corrida</button>
+    </div>`).join('');
+  }else{
+    lo.innerHTML=emptyHTML('inbox','Nenhuma oferta agora','Assim que surgir uma entrega disponível, ela aparece aqui. Toque em atualizar.');
+  }
+}
+
+async function aceitarCorrida(id,btn){
+  if(demoOn()){
+    const c=DEMO_DATA.corridas.find(x=>String(x.id)===String(id));
+    if(c){c.mine=true;c.status='aceita';}
+    toast('Corrida aceita!');
+    CORRIDAS=demoCorridas();
+    abrirCorrida(id);
+    return;
+  }
+  if(!dataOk()){toast('Sem conexão.');return;}
+  if(btn){btn.disabled=true;btn.innerHTML='<span class="msi">hourglass_top</span> Aceitando…';}
+  try{
+    await D().entregadorAceitar(id);
+    toast('Corrida aceita!');
+    CORRIDAS=await D().entregadorCorridas()||[];
+    abrirCorrida(id);
+  }catch(e){
+    toast('Não foi possível aceitar: '+((e&&e.message)||'tente de novo'));
+    if(btn){btn.disabled=false;btn.innerHTML='<span class="msi">check</span> Aceitar corrida';}
+    carregarCorridas();
+  }
+}
+
+/* ===================================================================
+   CORRIDA ATIVA + GPS + ETA
+   =================================================================== */
+let ATV=null;            // corrida ativa atual
+let map=null,vanMarker=null,origMarker=null,destMarker=null,routeLine=null,mapReady=false;
+let watchId=null,lastSent=0,lastEtaCalc=0,rtChan=null;
+
+const STEP_ORDER=['aceita','coletando','a_caminho','entregue'];
+function statusAtual(){return (ATV&&ATV.status)||'aceita';}
+
+function abrirCorrida(id){
+  const c=CORRIDAS.find(x=>String(x.id)===String(id));
+  if(!c){toast('Corrida não encontrada.');carregarCorridas();return;}
+  ATV=c;
+  irPara('ativa');
+  // preencher
+  $('atvType').className='ride-type '+(c.tipo==='coleta'?'coleta':'entrega');
+  $('atvType').innerHTML=`<span class="msi" style="font-size:15px">${c.tipo==='coleta'?'pets':'local_shipping'}</span> ${tipoLabel(c.tipo)}`;
+  $('atvVal').textContent=money(c.valor);
+  $('atvOrig').textContent=c.origem||'—';
+  $('atvDest').textContent=c.destino||'—';
+  $('mEta').textContent=c.eta_min!=null?Math.round(c.eta_min):'—';
+  $('mDist').textContent=c.distancia_km!=null?Number(c.distancia_km).toFixed(1):'—';
+  $('mAcc').textContent='—';
+  $('gpsStatus').textContent='Aguardando GPS…';
+  $('liveTag').style.display='none';
+  atualizarSteps();
+  atualizarBotaoAcao();
+  setTimeout(()=>{initMapaCorrida();},60);
+  iniciarGps();
+}
+
+function voltarLista(){
+  stopGps();
+  ATV=null;
+  irPara('corridas');
+  carregarCorridas();
+}
+
+/* ---- steps visuais ---- */
+function atualizarSteps(){
+  const cur=statusAtual();
+  const curIdx=STEP_ORDER.indexOf(cur);
+  document.querySelectorAll('#atvSteps .st').forEach(el=>{
+    const idx=STEP_ORDER.indexOf(el.getAttribute('data-step'));
+    el.classList.remove('done','cur');
+    if(idx<curIdx)el.classList.add('done');
+    else if(idx===curIdx)el.classList.add('cur');
+  });
+}
+
+/* ---- botão de ação conforme o estágio ---- */
+function atualizarBotaoAcao(){
+  const b=$('atvAction'),h=$('atvHint');const st=statusAtual();
+  b.classList.remove('green','teal');b.disabled=false;
+  if(st==='aceita'){
+    b.innerHTML='<span class="msi">inventory_2</span> Cheguei na loja / Coletei';
+    h.textContent='Confirme quando estiver com a carga em mãos.';
+  }else if(st==='coletando'){
+    b.classList.add('teal');
+    b.innerHTML='<span class="msi">navigation</span> A caminho do destino';
+    h.textContent='Toque ao sair para a entrega. O cliente acompanha sua posição ao vivo.';
+  }else if(st==='a_caminho'){
+    b.classList.add('green');
+    b.innerHTML='<span class="msi">lock_open</span> Confirmar entrega';
+    h.textContent='Ao chegar, peça a palavra de confirmação ao cliente.';
+  }else{
+    b.disabled=true;b.innerHTML='<span class="msi">check_circle</span> Entregue';
+    h.textContent='Entrega finalizada.';
+  }
+}
+
+/* ---- ação do botão de progresso ---- */
+async function acaoCorrida(){
+  if(!ATV)return;
+  const st=statusAtual();
+  if(st==='a_caminho'){abrirConfirm();return;}
+  const novo=st==='aceita'?'coletando':'a_caminho';
+  if(demoOn()){
+    ATV.status=novo;
+    const c=DEMO_DATA.corridas.find(x=>String(x.id)===String(ATV.id));if(c)c.status=novo;
+    atualizarSteps();atualizarBotaoAcao();
+    toast(novo==='coletando'?'Carga coletada!':'A caminho do destino!');
+    if(novo==='a_caminho')desenharRota();
+    return;
+  }
+  const b=$('atvAction');b.disabled=true;
+  const pos=lastCoords;
+  try{
+    await D().entregadorStatus(ATV.id,novo,pos?pos.lat:null,pos?pos.lng:null);
+    ATV.status=novo;
+    atualizarSteps();atualizarBotaoAcao();
+    toast(novo==='coletando'?'Carga coletada!':'A caminho do destino!');
+    if(novo==='a_caminho')desenharRota();
+  }catch(e){
+    toast('Não foi possível atualizar: '+((e&&e.message)||'tente de novo'));
+    b.disabled=false;
+  }
+}
+
+/* ===================================================================
+   MAPA
+   =================================================================== */
+function initMapaCorrida(){
+  const el=$('map');if(!el)return;
+  if(typeof L==='undefined'){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Mapa indisponível (sem internet)</div>';return;}
+  const dark=root.getAttribute('data-theme')==='dark';
+  if(!map){
+    map=L.map('map',{zoomControl:false,attributionControl:false});
+    L.tileLayer(dark?'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png':'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(map);
+    mapReady=true;
+  }
+  // limpar marcadores anteriores
+  [vanMarker,origMarker,destMarker,routeLine].forEach(m=>{if(m)try{map.removeLayer(m);}catch(_){}});
+  vanMarker=origMarker=destMarker=routeLine=null;
+
+  const o=coordOrigem(),d=coordDestino();
+  const bounds=[];
+  if(o){
+    origMarker=L.marker(o,{icon:pinIcon('orig','store')}).addTo(map);bounds.push(o);
+  }
+  if(d){
+    destMarker=L.marker(d,{icon:pinIcon('dest','home_pin')}).addTo(map);bounds.push(d);
+  }
+  if(bounds.length===2)map.fitBounds(bounds,{padding:[50,50],maxZoom:16});
+  else if(bounds.length===1)map.setView(bounds[0],14);
+  else map.setView([-23.7038,-46.7090],13);
+  setTimeout(()=>{try{map.invalidateSize();}catch(_){}},120);
+  desenharRota();
+}
+
+function pinIcon(cls,icon){
+  return L.divIcon({className:'',html:`<div class="pin ${cls}"><span class="msi">${icon}</span></div>`,iconSize:[30,30],iconAnchor:[15,30]});
+}
+function vanIcon(){
+  return L.divIcon({className:'',html:'<div class="van-marker"><span class="msi">local_shipping</span></div>',iconSize:[40,40],iconAnchor:[20,20]});
+}
+function coordOrigem(){return (ATV&&ATV.origem_lat!=null&&ATV.origem_lng!=null)?[Number(ATV.origem_lat),Number(ATV.origem_lng)]:null;}
+function coordDestino(){return (ATV&&ATV.destino_lat!=null&&ATV.destino_lng!=null)?[Number(ATV.destino_lat),Number(ATV.destino_lng)]:null;}
+
+/* desenha a linha da rota entre origem→destino (best-effort via OSRM) */
+async function desenharRota(){
+  if(!map||!mapReady)return;
+  const o=coordOrigem(),d=coordDestino();
+  if(!o||!d)return;
+  try{
+    const url=`https://router.project-osrm.org/route/v1/driving/${o[1]},${o[0]};${d[1]},${d[0]}?overview=full&geometries=geojson`;
+    const r=await fetch(url,{signal:AbortSignal.timeout(4000)});
+    const j=await r.json();
+    if(j&&j.code==='Ok'&&j.routes&&j.routes[0]&&j.routes[0].geometry){
+      const coords=j.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
+      if(routeLine)try{map.removeLayer(routeLine);}catch(_){}
+      routeLine=L.polyline(coords,{color:'#0FA3B1',weight:5,opacity:.65}).addTo(map);
+    }
+  }catch(e){
+    // fallback: linha reta
+    if(routeLine)try{map.removeLayer(routeLine);}catch(_){}
+    routeLine=L.polyline([o,d],{color:'#0FA3B1',weight:4,opacity:.4,dashArray:'8 8'}).addTo(map);
+  }
+}
+
+/* ===================================================================
+   GPS PRECISO E AO VIVO
+   - watchPosition com enableHighAccuracy:true, maximumAge:0
+   - usa a posição CRUA (não desloca)
+   - persiste via entregadorStatus a cada update durante a corrida ativa
+   =================================================================== */
+let lastCoords=null;
+
+function iniciarGps(){
+  stopGps();
+  if(!navigator.geolocation){$('gpsStatus').textContent='GPS não suportado neste aparelho.';return;}
+  $('gpsStatus').textContent='Obtendo GPS de alta precisão…';
+  watchId=navigator.geolocation.watchPosition(onPos,onGpsErr,{
+    enableHighAccuracy:true,maximumAge:0,timeout:15000
+  });
+}
+function stopGps(){
+  if(watchId!=null){try{navigator.geolocation.clearWatch(watchId);}catch(_){}watchId=null;}
+}
+
+function onGpsErr(e){
+  const m={1:'Permissão de localização negada. Ative o GPS nas configurações.',
+    2:'Posição indisponível. Verifique o sinal de GPS.',
+    3:'Tempo esgotado ao obter o GPS. Tentando novamente…'}[e&&e.code]||('Erro de GPS: '+(e&&e.message||''));
+  $('gpsStatus').textContent=m;
+}
+
+function onPos(p){
+  const lat=p.coords.latitude,lng=p.coords.longitude,acc=p.coords.accuracy;
+  lastCoords={lat,lng,acc};
+  // posição CRUA — sem snap/deslocamento
+  $('mAcc').textContent=acc!=null?Math.round(acc):'—';
+  $('liveTag').style.display='inline-flex';
+  $('gpsStatus').textContent='Localização ao vivo ativa';
+
+  // marcador do entregador no mapa
+  if(map&&mapReady){
+    if(!vanMarker){vanMarker=L.marker([lat,lng],{icon:vanIcon()}).addTo(map);}
+    else vanMarker.setLatLng([lat,lng]);
+  }
+
+  // persistir no backend (throttle ~4s) + broadcast realtime para o cliente
+  const now=Date.now();
+  if(ATV&&ATV.id&&now-lastSent>4000){
+    lastSent=now;
+    persistirPos(lat,lng);
+  }
+  // ETA até o destino (throttle ~12s)
+  if(now-lastEtaCalc>12000){
+    lastEtaCalc=now;
+    calcularEta(lat,lng);
+  }
+}
+
+async function persistirPos(lat,lng){
+  if(!ATV||!dataOk())return;
+  try{
+    await D().entregadorStatus(ATV.id,statusAtual(),lat,lng);
+  }catch(e){/* silencioso — best effort */}
+  // broadcast pelo canal de realtime (cliente acompanha em "Acompanhar")
+  try{
+    if(window.PetNexusRT&&PetNexusRT.available()){
+      if(!rtChan){rtChan=PetNexusRT.join('entrega-'+ATV.id,'entregador');if(rtChan)rtChan.subscribe(()=>{});}
+      if(rtChan)rtChan.sendPos({lat,lng,status:statusAtual(),ts:Date.now()});
+    }
+  }catch(_){}
+}
+
+/* ---- ETA via OSRM (com fallback linha reta @25km/h) ---- */
+async function calcularEta(lat,lng){
+  if(!ATV)return;
+  // alvo: origem se ainda não coletou; senão destino
+  const st=statusAtual();
+  const alvo=(st==='aceita')?coordOrigem():coordDestino();
+  if(!alvo){return;}
+  let etaMin=null,distKm=null;
+  try{
+    const url=`https://router.project-osrm.org/route/v1/driving/${lng},${lat};${alvo[1]},${alvo[0]}?overview=false`;
+    const r=await fetch(url,{signal:AbortSignal.timeout(4000)});
+    const j=await r.json();
+    if(j&&j.code==='Ok'&&j.routes&&j.routes[0]){
+      etaMin=j.routes[0].duration/60;
+      distKm=j.routes[0].distance/1000;
+    }
+  }catch(e){/* usa fallback */}
+  if(etaMin==null){
+    // fallback: distância em linha reta / 25 km/h
+    const dm=haversine([lat,lng],alvo);
+    distKm=dm/1000;
+    etaMin=(distKm/25)*60;
+  }
+  $('mEta').textContent=Math.max(0,Math.round(etaMin));
+  $('mDist').textContent=distKm.toFixed(1);
 }
 
 function haversine(a,b){const R=6371000,r=x=>x*Math.PI/180;const dLat=r(b[0]-a[0]),dLng=r(b[1]-a[1]);
   const s=Math.sin(dLat/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(s));}
 
-/* ---- snap to road via OSRM (OpenStreetMap) ---- */
-let _snapCache={lat:null,lng:null,result:null};
-async function snapToRoad(lat,lng){
-  // cache por 3m de deslocamento para não chamar a API a cada segundo
-  if(_snapCache.result&&haversine([_snapCache.lat,_snapCache.lng],[lat,lng])<3)return _snapCache.result;
+/* ===================================================================
+   CONFIRMAR ENTREGA (modal)
+   =================================================================== */
+function abrirConfirm(){abrirConfirmModal();}
+function abrirConfirmModal(){
+  $('confErr').classList.remove('show');$('confErr').textContent='';
+  $('confWord').value='';
+  $('confBtn').disabled=false;$('confBtn').innerHTML='<span class="msi">lock_open</span> Confirmar';
+  $('confirmModal').classList.add('on');
+  setTimeout(()=>$('confWord').focus(),120);
+}
+function fecharConfirm(){$('confirmModal').classList.remove('on');}
+
+async function confirmarEntrega(){
+  if(!ATV)return;
+  const err=$('confErr');err.classList.remove('show');err.textContent='';
+  const palavra=$('confWord').value.trim();
+  if(!palavra){err.textContent='Digite a palavra que o cliente informou.';err.classList.add('show');return;}
+  if(demoOn()){
+    fecharConfirm();stopGps();
+    const valor=ATV.valor;
+    const c=DEMO_DATA.corridas.find(x=>String(x.id)===String(ATV.id));if(c)c.status='entregue';
+    DEMO_DATA.ganhos.ganhos_total=Number((DEMO_DATA.ganhos.ganhos_total+Number(valor||0)).toFixed(2));
+    DEMO_DATA.ganhos.total_entregas+=1;
+    $('sucValor').textContent=money(valor);
+    irPara('sucesso');ATV=null;
+    return;
+  }
+  if(!dataOk()){err.textContent='Sem conexão com o servidor.';err.classList.add('show');return;}
+  const b=$('confBtn');b.disabled=true;b.innerHTML='<span class="msi">hourglass_top</span> Verificando…';
   try{
-    const r=await fetch(`https://router.project-osrm.org/nearest/v1/driving/${lng},${lat}?number=1`,{signal:AbortSignal.timeout(2500)});
-    const d=await r.json();
-    if(d.code==='Ok'&&d.waypoints&&d.waypoints.length){
-      const wp=d.waypoints[0];
-      const res={lat:wp.location[1],lng:wp.location[0],street:wp.name||''};
-      _snapCache={lat,lng,result:res};
-      return res;
+    const res=await D().entregadorConfirmar(ATV.id,palavra);
+    if(res&&res.ok){
+      fecharConfirm();
+      stopGps();
+      ATV.status='entregue';
+      $('sucValor').textContent=money(res.valor!=null?res.valor:ATV.valor);
+      irPara('sucesso');
+      ATV=null;
+      // limpar canal realtime
+      try{if(rtChan){rtChan.leave();rtChan=null;}}catch(_){}
+    }else{
+      err.textContent=(res&&res.msg)||'Código incorreto. Confira com o cliente.';err.classList.add('show');
+      b.disabled=false;b.innerHTML='<span class="msi">lock_open</span> Confirmar';
     }
-  }catch(e){}
-  return{lat,lng,street:''};
+  }catch(e){
+    err.textContent='Erro ao confirmar: '+((e&&e.message)||'tente de novo')+'.';err.classList.add('show');
+    b.disabled=false;b.innerHTML='<span class="msi">lock_open</span> Confirmar';
+  }
 }
 
-async function broadcast(lat,lng,acc){
-  // snap to road
-  const snapped=await snapToRoad(lat,lng);
-  const slat=snapped.lat,slng=snapped.lng;
-  const now=Date.now();let speed=0,heading=0;
-  if(lastPos){const d=haversine(lastPos,[slat,slng]);const dt=Math.max(0.5,(now-lastTs)/1000);speed=d/dt;
-    heading=Math.atan2(slng-lastPos[1],slat-lastPos[0])*180/Math.PI;}
-  lastPos=[slat,slng];lastTs=now;
-  if(van){van.setLatLng([slat,slng]);map&&map.panTo([slat,slng],{animate:true});}
-  if(snapped.street)document.getElementById('status').textContent=(mode==='gps'?'A caminho (GPS)':'A caminho (simulação)')+' — '+snapped.street;
-  const payload={code:runCode,name:DRIVER_NAME,lat:slat,lng:slng,heading,speed,acc:acc||null,ts:now};
-  if(rt){rt.sendPos(payload);sent++;}
-  if(rtFleet){rtFleet.sendPos(payload);}
-  document.getElementById('mSpeed').textContent=(speed*3.6).toFixed(0);
-  document.getElementById('mAcc').textContent=acc?acc.toFixed(0):'—';
-  document.getElementById('mSent').textContent=sent;
+/* ===================================================================
+   GANHOS
+   =================================================================== */
+function pintarGanhos(g){
+  $('gTotal').textContent=money(g.ganhos_total);
+  $('gEntregas').textContent=g.total_entregas!=null?g.total_entregas:0;
+  const nota=g.avaliacao_media;
+  $('gNota').textContent=(nota!=null&&nota>0)?Number(nota).toFixed(1):'—';
+  $('gVeic').textContent=g.tipo_veiculo==='carro'?'Carro':(g.tipo_veiculo==='moto'?'Moto':'—');
+  pintarStars(nota||0);
+}
+async function carregarGanhos(){
+  if(demoOn()){ pintarGanhos(demoGanhos()); return; }
+  if(!dataOk()){toast('Sem conexão.');return;}
+  $('gTotal').textContent='…';
+  try{
+    const g=await D().entregadorGanhos()||{};
+    $('gTotal').textContent=money(g.ganhos_total);
+    $('gEntregas').textContent=g.total_entregas!=null?g.total_entregas:0;
+    const nota=g.avaliacao_media;
+    $('gNota').textContent=(nota!=null&&nota>0)?Number(nota).toFixed(1):'—';
+    $('gVeic').textContent=g.tipo_veiculo==='carro'?'Carro':(g.tipo_veiculo==='moto'?'Moto':'—');
+    pintarStars(nota||0);
+  }catch(e){
+    $('gTotal').textContent='R$ 0,00';
+    toast('Não foi possível carregar os ganhos.');
+  }
 }
 
-function startGps(){
-  if(!navigator.geolocation){log('Geolocalização não suportada — use "Simular trajeto".');return false;}
-  document.getElementById('status').textContent='Obtendo GPS…';
-  watchId=navigator.geolocation.watchPosition(
-    p=>{document.getElementById('status').textContent='A caminho (GPS)';broadcast(p.coords.latitude,p.coords.longitude,p.coords.accuracy);},
-    e=>{log('Erro de GPS: '+e.message+' — tente "Simular trajeto".');},
-    {enableHighAccuracy:true,maximumAge:1000,timeout:15000}
-  );
-  return true;
+function pintarStars(nota){
+  const wrap=$('gStars');if(!wrap)return;
+  const n=Math.round(Number(nota)||0);
+  wrap.innerHTML='';
+  for(let i=1;i<=5;i++){
+    const s=document.createElement('span');s.className='msi';
+    s.textContent='star';
+    s.style.opacity=i<=n?'1':'.28';
+    wrap.appendChild(s);
+  }
 }
 
-function startSim(){
-  document.getElementById('status').textContent='A caminho (simulação)';
-  // interpola ao longo da rota, ~48s
-  const segs=[];let total=0;
-  for(let i=0;i<route.length-1;i++){const len=haversine(route[i],route[i+1]);segs.push({a:route[i],b:route[i+1],len});total+=len;}
-  let t=0;const dur=48;
-  simTimer=setInterval(()=>{
-    t+=1;const frac=Math.min(1,t/dur);let d=frac*total;let pos=route[route.length-1];
-    for(const s of segs){if(d<=s.len||s===segs[segs.length-1]){const r=s.len?Math.min(1,d/s.len):0;pos=[s.a[0]+(s.b[0]-s.a[0])*r,s.a[1]+(s.b[1]-s.a[1])*r];break;}d-=s.len;}
-    broadcast(pos[0],pos[1],8);
-    if(frac>=1){document.getElementById('status').textContent='Chegou ao destino 🎉';clearInterval(simTimer);simTimer=null;}
-  },1000);
-  return true;
-}
-
-function toggleRun(){
-  if(running){stopRun();return;}
-  const code=(document.getElementById('code').value||'demo').trim()||'demo';
-  runCode=code;
-  rt=null;rtFleet=null;
-  if(window.PetNexusRT && PetNexusRT.available()){
-    rt=PetNexusRT.join(code,'entregador');
-    if(rt){rt.subscribe(s=>{if(s==='SUBSCRIBED'){rt.track({role:'entregador',code:code,name:DRIVER_NAME,ts:Date.now()});log('Canal "'+rt.code+'" conectado. Transmitindo…');}});}
-    rtFleet=PetNexusRT.join('frota','entregador');
-    if(rtFleet){rtFleet.subscribe(s=>{if(s==='SUBSCRIBED'){rtFleet.track({role:'entregador',code:code,name:DRIVER_NAME,ts:Date.now()});log('Frota conectada — visível no CRM.');}});}
-  }else{log('Sem Supabase: transmitindo só localmente (o cliente não recebe). Configure petnexus-config.js.');}
-  const ok = mode==='gps'?startGps():startSim();
-  if(ok===false)return;
-  running=true;sent=0;
-  const b=document.getElementById('startBtn');b.classList.add('stop');b.innerHTML='<span class="msi">stop</span> Encerrar transmissão';
-  document.getElementById('liveTag').style.display='inline-flex';
-  document.getElementById('code').disabled=true;
-  log('Transmissão iniciada — código "'+code+'" ('+(mode==='gps'?'GPS':'simulação')+').');
-}
-
-function stopRun(){
-  running=false;
-  if(watchId!=null){navigator.geolocation.clearWatch(watchId);watchId=null;}
-  if(simTimer){clearInterval(simTimer);simTimer=null;}
-  if(rt){rt.leave();rt=null;}
-  if(rtFleet){rtFleet.leave();rtFleet=null;}
-  lastPos=null;
-  const b=document.getElementById('startBtn');b.classList.remove('stop');b.innerHTML='<span class="msi">play_arrow</span> Iniciar transmissão';
-  document.getElementById('liveTag').style.display='none';
-  document.getElementById('status').textContent='Parado';
-  document.getElementById('code').disabled=false;
-  log('Transmissão encerrada.');
-}
-addEventListener('pagehide',()=>{if(rt)rt.leave();if(rtFleet)rtFleet.leave();});
-
-/* ===== AUTH ENTREGADOR ===== */
+/* ===================================================================
+   AUTH ENTREGADOR (Firebase) — preservado do original
+   =================================================================== */
 function entFirebaseErr(e){
+  if(e&&e.friendly)return e.friendly;
   const map={
     'auth/invalid-email':'E-mail inválido.',
     'auth/user-not-found':'Usuário não encontrado.',
@@ -428,24 +1332,16 @@ function entFirebaseErr(e){
     'auth/weak-password':'Senha fraca — use ao menos 6 caracteres.',
     'auth/too-many-requests':'Muitas tentativas. Aguarde alguns minutos.',
     'auth/network-request-failed':'Sem conexão. Verifique sua internet.',
-    'auth/popup-closed-by-user':'Login cancelado.',
-    'auth/cancelled-popup-request':'Login cancelado.',
   };
   return map[e&&e.code]||'Erro inesperado. Tente novamente.';
 }
 function entErrShow(id,msg){const el=document.getElementById(id);if(el){el.textContent=msg;el.classList.add('show');}}
 function entErrClear(){['entAuthErr','entAuthErrC'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent='';el.classList.remove('show');}});}
 function entBusy(b){
-  ['entBtnEntrar','entBtnCadastrar','entBtnGoogle','entBtnGoogleC'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=b;});
+  ['entBtnEntrar'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=b;});
 }
-function entAuthTab(tab){
-  const e=tab==='entrar';
-  document.getElementById('entTabEntrar').classList.toggle('on',e);
-  document.getElementById('entTabCadastro').classList.toggle('on',!e);
-  document.getElementById('entFormEntrar').classList.toggle('hidden',!e);
-  document.getElementById('entFormCadastro').classList.toggle('hidden',e);
-  entErrClear();
-}
+// Cadastro público desabilitado — apenas login disponível.
+function entAuthTab(tab){ entErrClear(); }
 function entShowApp(){const w=document.getElementById('entAuthWrap');if(w)w.style.display='none';}
 function entShowAuth(){const w=document.getElementById('entAuthWrap');if(w)w.style.display='flex';entErrClear();entBusy(false);}
 
@@ -460,29 +1356,8 @@ async function entDoLogin(){
   try{await A.login(email,senha);}
   catch(e){entBusy(false);entErrShow('entAuthErr',entFirebaseErr(e));}
 }
-async function entDoCadastro(){
-  const A=window.PetNexusAuth;
-  if(!A||!A.available()){entErrShow('entAuthErrC','Firebase não configurado em petnexus-firebase.js');return;}
-  entErrClear();
-  const nome=document.getElementById('entCadNome').value.trim();
-  const email=document.getElementById('entCadEmail').value.trim();
-  const senha=document.getElementById('entCadSenha').value;
-  const senha2=document.getElementById('entCadSenha2').value;
-  if(!nome){entErrShow('entAuthErrC','Informe seu nome.');return;}
-  if(!email){entErrShow('entAuthErrC','Informe seu e-mail.');return;}
-  if(senha.length<6){entErrShow('entAuthErrC','Senha fraca — use ao menos 6 caracteres.');return;}
-  if(senha!==senha2){entErrShow('entAuthErrC','As senhas não coincidem.');return;}
-  entBusy(true);
-  try{await A.signup(email,senha,{nome});}
-  catch(e){entBusy(false);entErrShow('entAuthErrC',entFirebaseErr(e));}
-}
-async function entDoGoogle(){
-  const A=window.PetNexusAuth;
-  if(!A||!A.available()){entErrShow('entAuthErr','Firebase não configurado em petnexus-firebase.js');return;}
-  entErrClear();entBusy(true);
-  try{await A.loginGoogle();}
-  catch(e){entBusy(false);entErrShow('entAuthErr',entFirebaseErr(e));}
-}
+// Cadastro público desabilitado — contas são criadas pelo operador no Firebase.
+
 async function entDoReset(){
   const A=window.PetNexusAuth;
   if(!A||!A.available()){return;}
@@ -492,21 +1367,82 @@ async function entDoReset(){
   catch(e){entErrShow('entAuthErr',entFirebaseErr(e));}
 }
 
-// Enter key nos campos
+// Enter key nos campos de auth
 ;['entEmail','entSenha'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter')entDoLogin();});});
 ;['entCadEmail','entCadNome','entCadSenha','entCadSenha2'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter')entDoCadastro();});});
+// Enter na palavra de confirmação
+;(function(){const w=document.getElementById('confWord');if(w)w.addEventListener('keydown',e=>{if(e.key==='Enter')confirmarEntrega();});})();
 
-// Conecta ao estado Firebase
+/* ===================================================================
+   TUTORIAL GUIADO (motor compartilhado petnexus-tour.js)
+   =================================================================== */
+const TOUR_KEY='petnexus_tour_entregador_v1';
+function tourSteps(){
+  return [
+    {title:'Bem-vindo, entregador! 🛵',text:'Vamos fazer um tour rápido pelo app. Em poucos segundos você conhece tudo. Pode pular quando quiser.'},
+    {sel:'[data-tour="oferta"]',title:'Ofertas de corrida',text:'Cada cartão é uma entrega ou coleta disponível: você vê origem, destino, distância, peso e quanto vai receber.',place:'top'},
+    {sel:'[data-tour="aceitar"]',title:'Aceitar corrida',text:'Gostou da oferta? Toque em Aceitar corrida para iniciar a entrega e abrir o mapa do trajeto.',place:'top'},
+    {sel:'#map',title:'Mapa ao vivo',text:'Na corrida ativa o mapa mostra a rota até a loja e o cliente. Seu GPS atualiza sua posição em tempo real.',place:'bottom'},
+    {sel:'#atvAction',title:'Avançar a entrega',text:'Use o botão grande para confirmar cada etapa: coletei → a caminho → confirmar entrega (com a palavra de confirmação do cliente).',place:'top'},
+    {sel:'#nav',title:'Navegação',text:'Alterne entre suas Corridas e seus Ganhos pela barra inferior a qualquer momento.',place:'top'},
+    {sel:'#navGanhos',title:'Seus ganhos',text:'Na aba Ganhos você acompanha o total recebido, número de entregas e sua nota média. Pronto, boas entregas!',place:'top'}
+  ];
+}
+function startTour(){
+  if(!window.PetNexusTour)return;
+  // garante que a tela de corridas (com oferta) esteja visível para os primeiros passos
+  irPara('corridas');
+  if(demoOn())carregarCorridas();
+  setTimeout(()=>PetNexusTour.start(tourSteps(),{key:TOUR_KEY,labelDone:'Começar a entregar'}),120);
+}
+function replayTour(){
+  if(!window.PetNexusTour){toast('Tutorial indisponível.');return;}
+  PetNexusTour.reset(TOUR_KEY);
+  startTour();
+}
+function maybeStartTour(){
+  if(!window.PetNexusTour)return;
+  if(PetNexusTour.done(TOUR_KEY))return;
+  // só roda com a tela de auth escondida e UI já renderizada
+  const w=document.getElementById('entAuthWrap');
+  if(w&&getComputedStyle(w).display!=='none')return;
+  setTimeout(()=>{ if(!PetNexusTour.done(TOUR_KEY)&&!PetNexusTour.active())startTour(); },700);
+}
+
+// Conecta ao estado Firebase (gate de papel preservado)
 ;(function entWireAuth(){
   const A=window.PetNexusAuth;
   if(!A||!A.available()){
-    // Firebase não configurado — permite acesso direto (modo dev)
-    entShowApp();return;
+    // Firebase não configurado — verifica modo demo, senão abre direto (modo dev)
+    let demo=false;try{demo=localStorage.getItem(AUTH_DEMO_KEY)==='1';}catch(_){}
+    if(demo){authDemo();return;}
+    entShowApp();recarregar();return;
   }
-  A.onUser(function(user){
-    if(user){entShowApp();}else{entShowAuth();}
+  A.onUser(async function(user){
+    if(!user){
+      let demo=false;try{demo=localStorage.getItem(AUTH_DEMO_KEY)==='1';}catch(_){}
+      if(demo){authDemo();return;}
+      stopGps();entShowAuth();irPara('load');return;
+    }
+    // Conta demo (local-part começa com "demo" e @entregapet.com): ativa modo demo
+    // com dados mock e NÃO bate no Supabase/backend.
+    if(A.isDemoEmail&&A.isDemoEmail(user.email)){authDemo();return;}
+    // Gate de papel: so entregador (staff/admin tem acesso amplo).
+    const real=A.role&&A.role();
+    if(A.profile&&A.profile()&&real&&real!==A.appRole()&&real!=='staff'&&real!=='admin'){
+      try{await A.logout();}catch(_){}
+      entShowAuth();
+      entErrShow('entAuthErr','Esta conta nao e de entregador. Faca login com uma conta de entregador.');
+      return;
+    }
+    entShowApp();
+    recarregar();
+    maybeStartTour();
   });
 })();
+
+// limpeza ao sair da página
+addEventListener('pagehide',()=>{stopGps();try{if(rtChan)rtChan.leave();}catch(_){}});
 </script>
 </body>
 </html>

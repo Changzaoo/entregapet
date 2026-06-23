@@ -17,6 +17,33 @@
 ;(function () {
   var sbClient = null, listeners = [], current = null, profileCache = null;
   function appRole() { return window.PETNEXUS_APP_ROLE || 'cliente'; }
+
+  // ===== Isolamento por dominio de e-mail =====
+  // Cada app aceita SOMENTE o seu dominio. admin@pet.com tem acesso a todos
+  // (conta de teste). O dominio pode ser sobrescrito por window.PETNEXUS_APP_DOMAIN.
+  var DOMAIN_BY_ROLE = { cliente: 'lojapet.com', entregador: 'entregapet.com', staff: 'pet.com', admin: 'pet.com' };
+  var APP_BY_DOMAIN  = { 'lojapet.com': 'App do Cliente', 'entregapet.com': 'App do Entregador', 'pet.com': 'CRM / Gestor' };
+  var ALLOW_ALL_EMAILS = ['admin@pet.com']; // contas com acesso a todos os apps
+  function appDomain() { return String(window.PETNEXUS_APP_DOMAIN || DOMAIN_BY_ROLE[appRole()] || '').toLowerCase(); }
+  function emailDom(email) { var s = String(email || '').toLowerCase().trim(); var i = s.lastIndexOf('@'); return i >= 0 ? s.slice(i + 1) : ''; }
+  // Conta de DEMONSTRACAO: local-part comeca com "demo" (ex.: demo@lojapet.com,
+  // demo-joao@pet.com). O operador cria essas contas no Firebase e elas entram
+  // com TODOS os privilegios do modo demo (dados mock, sem tocar no backend).
+  // O dominio continua isolando o app (demo@lojapet.com so abre o App do Cliente).
+  function emailLocal(email) { var s = String(email || '').toLowerCase().trim(); var i = s.lastIndexOf('@'); return i >= 0 ? s.slice(0, i) : s; }
+  function isDemoEmail(email) { return /^demo([._+-]|$)/.test(emailLocal(email)); }
+  function emailAllowedHere(email) {
+    email = String(email || '').toLowerCase().trim();
+    if (ALLOW_ALL_EMAILS.indexOf(email) >= 0) return true;
+    var d = appDomain(); if (!d) return true;            // sem restricao configurada
+    return emailDom(email) === d;
+  }
+  function domErr(email) {
+    var want = appDomain(), has = emailDom(email), belongs = APP_BY_DOMAIN[has], msg;
+    if (belongs && has !== want) msg = 'Esta conta é do ' + belongs + '. Abra o aplicativo correto para entrar.';
+    else msg = 'Use um e-mail @' + want + ' para entrar neste aplicativo.';
+    var e = new Error(msg); e.code = 'petnexus/wrong-app'; e.friendly = msg; return e;
+  }
   function fbReady() {
     var c = window.PETNEXUS_FIREBASE;
     return !!(window.firebase && window.firebase.auth && c && c.apiKey && c.apiKey.indexOf('PREENCHA') !== 0);
@@ -61,8 +88,21 @@
   function start() {
     if (!initFirebase()) { console.warn('[PetNexusAuth] Firebase nao configurado (preencha petnexus-firebase.js).'); notify(null); return; }
     firebase.auth().onAuthStateChanged(async function (u) {
+      // Guarda de isolamento: se uma sessao de OUTRO app vazou para este
+      // (mesmo projeto Firebase), recusa aqui e desloga — exceto admin@pet.com.
+      if (u && !emailAllowedHere(u.email)) {
+        try { await firebase.auth().signOut(); } catch (e) {}
+        current = null; profileCache = null; notify(null);
+        return;
+      }
       current = u || null;
-      if (u) { await claimProfile(u.displayName, u.phoneNumber); } else { profileCache = null; }
+      if (u) {
+        // So reivindica o papel uma vez por sessao (no primeiro carregamento
+        // com sessao ativa). Evita re-upsert de papel a cada refresh de token,
+        // troca de aba ou recarga, que poderia reivindicar o papel do app
+        // ERRADO para um usuario cuja sessao Firebase vazou entre apps.
+        if (!profileCache) { await claimProfile(u.displayName, u.phoneNumber); }
+      } else { profileCache = null; }
       notify(current);
     });
   }
@@ -81,14 +121,31 @@
     db: pn,                     // atalho .schema('petnexus')
     onUser: function (cb) { listeners.push(cb); return cb; },
 
+    // ---- helpers de dominio (para a UI validar/avisar) ----
+    appDomain: appDomain,
+    emailAllowedHere: emailAllowedHere,
+    isDemoEmail: isDemoEmail,   // conta demo (prefixo demo@) -> modo demo com dados mock
+
     // ---- entrar ----
-    login: function (email, pass) { return firebase.auth().signInWithEmailAndPassword(email, pass); },
-    loginGoogle: function () { return firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider()); },
-    loginApple: function () { return firebase.auth().signInWithPopup(appleProvider()); },
+    login: function (email, pass) {
+      if (!emailAllowedHere(email)) return Promise.reject(domErr(email));
+      return firebase.auth().signInWithEmailAndPassword(email, pass);
+    },
+    loginGoogle: async function () {
+      var cred = await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
+      if (cred && cred.user && !emailAllowedHere(cred.user.email)) { try { await firebase.auth().signOut(); } catch (e) {} throw domErr(cred.user.email); }
+      return cred;
+    },
+    loginApple: async function () {
+      var cred = await firebase.auth().signInWithPopup(appleProvider());
+      if (cred && cred.user && !emailAllowedHere(cred.user.email)) { try { await firebase.auth().signOut(); } catch (e) {} throw domErr(cred.user.email); }
+      return cred;
+    },
 
     // ---- cadastrar (papel = o do app; allowlist pode promover) ----
     signup: async function (email, pass, extra) {
       extra = extra || {};
+      if (!emailAllowedHere(email)) throw domErr(email);
       var cred = await firebase.auth().createUserWithEmailAndPassword(email, pass);
       if (extra.nome) { try { await cred.user.updateProfile({ displayName: extra.nome }); } catch (e) {} }
       await claimProfile(extra.nome, extra.tel);
